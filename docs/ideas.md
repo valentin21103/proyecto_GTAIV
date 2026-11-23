@@ -14,8 +14,8 @@ Ordenadas de más difícil a más fácil.
 | 8 | Caer al recibir tiros y levantarse (idea de Bullet Impact Euphoria) | Media | pendiente |
 | 9 | Baúl del auto con armas | Media | pendiente |
 | 10 | Sentarse en bancos y escalones | Media-baja | pendiente |
-| 11 | Hambre, sed (alcohol/borrachera) y baño | Media-baja | pendiente |
-| 12 | Salud: desangrarse y curarse con botiquín (idea de Bleed & Heal) | Baja | pendiente |
+| 11 | Hambre, sed (alcohol/borrachera) y baño | Media-baja | **hecho (v1, sin borrachera)** |
+| 12 | Salud: desangrarse y curarse con botiquín (idea de Bleed & Heal) | Baja | **hecho (v1)** |
 | 13 | Arrest Warrant (opcional) | Baja | pendiente |
 
 ## Otros pendientes
