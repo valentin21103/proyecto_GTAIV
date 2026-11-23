@@ -1,0 +1,107 @@
+# TACE.Lite v1.2 // GTAIV weapons.ide
+
+weap
+# GTA IV WEAPONS
+w_bat, w_bat, null, 1, 50, 0
+w_cue, w_cue, null, 1, 50, 0
+w_knife, w_knife, null, 1, 50, 0
+w_grenade, w_grenade, throw_grenade, 1, 100, 0
+w_molotov, w_molotov, throw_grenade, 1, 100, 0
+cj_rpg_rocket, cj_rpg_rocket, null, 1, 100, 0
+w_glock, w_glock, gun@handgun, 1, 30, 0
+w_eagle, w_eagle, gun@44a, 1, 30, 0
+w_pumpshot, w_pumpshot, gun@baretta, 1, 50, 0
+w_shotgun, w_shotgun, gun@shotgun, 1, 50, 0
+w_uzi, w_uzi, gun@uzi, 1, 30, 0
+w_mp5, w_mp5, gun@mp5k, 1, 30, 0
+w_ak47, w_ak47, gun@ak47, 1, 50, 0
+w_m4, w_m4, gun@m4, 1, 50, 0
+w_psg1, w_psg1, gun@psg, 1, 50, 0
+w_rifle, w_rifle, gun@m40, 1, 50, 0
+rpg, rpg, gun@rocket, 1, 100, 0
+
+# TLAD WEAPONS
+w_e1_cue, w_e1_cue, null, 1, 50, 0
+w_e1_cuehalf, w_e1_cuehalf, null, 1, 50, 0
+w_e1_pipebomb, w_e1_pipebomb, throw_pipe, 1, 100, 0
+w_e1_cz75, w_e1_cz75, gun@handgun, 1, 30, 0
+w_e1_pumpshot, w_e1_pumpshot, gun@baretta, 1, 50, 0
+w_e1_sawnoff, w_e1_sawnoff, gun@sawnoff, 1, 30, 0
+w_e1_sweeper, w_e1_sweeper, gun@sweeper, 1, 30, 0
+
+# TBOGT WEAPONS
+w_e2_grenade, w_e2_grenade, throw_grenade, 1, 100, 0
+w_e2_stickybomb, w_e2_stickybomb, throw_grenade, 1, 100, 0
+w_e2_rocket, w_e2_rocket, null, 1, 100, 0
+w_e2_44amag, w_e2_44amag, gun@deagle, 1, 30, 0
+w_e2_eagle, w_e2_eagle, gun@8bull, 1, 30, 0
+w_e2_aa12, w_e2_aa12, gun@aa12, 1, 50, 0
+w_e2_aa12_exp, w_e2_aa12_exp, gun@aa12, 1, 50, 0
+w_e2_p90, w_e2_p90, gun@p90, 1, 50, 0
+w_e2_uzi, w_e2_uzi, gun@gold_uzi, 1, 50, 0
+w_e2_m249, w_e2_m249, gun@m249, 1, 50, 0
+w_e2_dsr1, w_e2_dsr1, gun@dsr1, 1, 50, 0
+w_e2_glauncher, w_e2_glauncher, gun@grnde_launch, 1, 100, 0
+
+# TACE.Lite WEAPONS
+w_e3_nstick, w_e3_nstick, null, 1, 50, 0
+w_e3_8bull, w_e3_8bull, gun@8bull, 1, 30, 0
+w_e3_silenced, w_e3_silenced, gun@handgun, 1, 30, 0
+w_e3_fthrower, w_e3_fthrower, gun@minigun, 1, 30, 0
+w_e3_minigun, w_e3_minigun, gun@minigun, 1, 30, 0
+w_e3_camera, w_e3_camera, throw_grenade, 1, 50, 0
+w_e3_chutepack, w_e3_chutepack, null, 1, 50, 0
+end
+
+amat
+# GTA IV WEAPONS
+w_bat, 0, CM_WEAPONS_BASEBALL_BAT
+w_cue, 0, CM_WEAPONS_POOLCUE
+w_knife, 0, CM_WEAPONS_KNIFE
+w_grenade, 0, CM_WEAPONS_GRENADE
+w_molotov, 0, CM_WEAPONS_MOLOTOV
+cj_rpg_rocket, 0, CM_WEAPONS_GRENADE
+w_glock, 0, CM_WEAPONS_PISTOL
+w_eagle, 0, CM_WEAPONS_44A
+w_pumpshot, 0, CM_WEAPONS_SHOTGUN
+w_shotgun, 0, CM_WEAPONS_SHOTGUN
+w_uzi, 0, CM_WEAPONS_SMG
+w_mp5, 0, CM_WEAPONS_SMG
+w_ak47, 0, CM_WEAPONS_AK47
+w_m4, 0, CM_WEAPONS_M4
+w_psg1, 0, CM_WEAPONS_SNIPER_RIFLE
+w_rifle, 0, CM_WEAPONS_SNIPER_RIFLE
+rpg, 0, CM_WEAPONS_ROCKET_LAUNCHER
+
+# TLAD WEAPONS
+w_e1_cue, 0, CM_WEAPONS_POOLCUE
+w_e1_cuehalf, 0, CM_WEAPONS_POOLCUE
+w_e1_pipebomb, 0, CM_WEAPONS_PIPE_BOMB
+w_e1_cz75, 0, CM_WEAPONS_PISTOL
+w_e1_pumpshot, 0, CM_WEAPONS_SHOTGUN
+w_e1_sawnoff, 0, CM_WEAPONS_SAWN_OFF
+w_e1_sweeper, 0, CM_WEAPONS_ASS_SHOT
+
+# TBOGT WEAPONS
+w_e2_grenade, 0, CM_WEAPONS_GRENADE_LAUNCHER_GRENADE
+w_e2_stickybomb, 0, CM_WEAPONS_STICKY_BOMB
+w_e2_rocket, 0, CM_WEAPONS_GRENADE
+w_e2_44amag, 0, CM_WEAPONS_PISTOL
+w_e2_eagle, 0, CM_WEAPONS_44A
+w_e2_aa12, 0, CM_WEAPONS_ASS_SHOT
+w_e2_aa12_exp, 0, CM_WEAPONS_ASS_SHOT
+w_e2_p90, 0, CM_WEAPONS_P90
+w_e2_uzi, 0, CM_WEAPONS_GOLD_UZI
+w_e2_m249, 0, CM_WEAPONS_M249
+w_e2_dsr1, 0, CM_WEAPONS_DSR1
+w_e2_glauncher, 0, CM_WEAPONS_GRENADE_LAUNCHER
+
+# TACE.Lite WEAPONS
+w_e3_camera, 0, CM_ELECTRICAL_MOBILE_PHONE
+w_e3_chutepack, 0, CM_PED_GYM_BAG
+w_e3_nstick, 0, CM_WEAPONS_NIGHTSTICK
+w_e3_8bull, 0, CM_WEAPONS_44A
+w_e3_silenced, 0, CM_WEAPONS_PISTOL
+w_e3_fthrower, 0, CM_WEAPONS_FLAME_THROWER
+w_e3_minigun, 0, CM_WEAPONS_MINIGUN
+end

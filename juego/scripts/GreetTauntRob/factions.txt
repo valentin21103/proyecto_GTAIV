@@ -1,0 +1,49 @@
+﻿# factions.txt  -  put this file in scripts\Dialogue\
+#
+# Decides the name shown under the menu when you hold LT on an NPC. Anything that matches no line shows "Stranger".
+#
+# Two kinds of lines:
+#     PEDTYPE = Name            matches the NPC's ped type (underscores and capitals are ignored)
+#     model:MODELNAME = Name    matches one specific ped model (use this for hookers, dealers, etc.)
+#
+# A model line beats a ped type line. For ped types, an exact match wins, otherwise the first line whose
+# text appears inside the ped type is used, so put more specific lines above general ones.
+#
+# After locking on, scripts\StrangerSystem.log shows what the script saw, for example:
+#     Locked on ped type 'Gang_RussianGang', model hash 123456 -> menu name 'Stranger' (no rule)
+# If a name is wrong, fix the line here. Changes are read when the game starts.
+
+# ---- by model (these use the civilian ped type, so they need model lines) ----
+model:F_Y_hooker_01 = Prostituta
+model:F_Y_hooker_03 = Prostituta
+model:F_Y_STRIPPERC01 = Stripper
+model:F_Y_STRIPPERC02 = Stripper
+model:M_Y_BOUNCER_01 = Patovica
+model:M_Y_BOUNCER_02 = Patovica
+model:M_M_SECURITYMAN = Guardia de seguridad
+model:M_Y_dealer = Traficante
+model:M_M_GBik_Lo_03 = Ángel de la Muerte
+model:M_Y_GBik_Hi_01 = Ángel de la Muerte
+model:M_Y_GBik_Hi_02 = Ángel de la Muerte
+model:M_Y_GBik02_Lo_02 = The Lost
+model:M_Y_GBik_Lo_01 = The Lost
+model:M_Y_GBik_Lo_02 = The Lost
+model:M_M_Genbum_01 = Vagabundo
+
+# ---- by ped type (from peds.ide: these have their own types) ----
+COP = Policía
+POLICE = Policía
+FIREMAN = Bombero
+MEDIC = Paramédico
+JAMAICAN = Yardie
+ITALIAN = Mafioso
+CHINESE = Tríada
+JAPANESE = Yakuza
+ALBANIAN = Albanés
+IRISH = Mafioso irlandés
+KOREAN = Pandillero coreano
+PUERTO = Spanish Lord
+AFRICAN = Desconocido
+RUSSIANMOB = Mafioso ruso
+RUSSIANGANG = Pandillero ruso
+RUSSIAN = Desconocido

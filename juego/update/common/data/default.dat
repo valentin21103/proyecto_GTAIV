@@ -1,0 +1,56 @@
+# TACE.Lite v1.2 // GTAIV default.dat
+
+# DISABLED GTAIV FILES
+
+# IDE FILES
+IDE common:/data/default.ide
+IDE common:/data/parachute.ide
+IDE common:/data/peds.ide
+IDE common:/data/vehicles.ide
+IDE common:/data/weapons.ide
+
+# IMG FILES
+
+# IPL FILES
+
+# DATA FILES
+FMENUFILE common:/data/frontend_menus.xml
+LBDATAFILE common:/data/leaderboards_data.xml
+LBICONSFILE platform:/textures/leaderboards.wtd
+
+RADIO common:/data/radiohud.dat
+RADIOLOGOS common:/data/RadioLogo.dat
+
+HTML http:
+HTML e1:/pc/html
+HTML e2:/pc/html
+
+BLOODFX common:/data/effects/bloodFx.dat
+ENTITYFX common:/data/effects/entityFx.dat
+EXPLOSIONFX common:/data/effects/explosionFx.dat
+MTLFX common:/data/effects/materialFx.dat
+PEDFX common:/data/effects/pedFx.dat
+VEHFX common:/data/effects/vehicleFx.dat
+WEAPONFX common:/data/effects/weaponFx.dat
+
+RMPTFX e1:/pc/data/effects/gta_ep1.wpfl
+RMPTFX e2:/pc/data/effects/gta_ep2.wpfl
+
+ACTIONTABLE common:/data/action_table.csv
+ANIMGRP common:/data/animgrp.dat
+MELEEANIMS common:/data/MeleeAnims.dat
+
+PEDGRP common:/data/pedgrp.dat
+PEDPERSONALITY common:/data/pedpersonality.dat
+
+CARCOLS common:/data/carcols.dat
+CARGRP common:/data/cargrp.dat
+HANDLING common:/data/handling.dat
+VEHICLEEXTRAS common:/data/VehicleExtras.dat
+VEHOFF common:/data/vehOff.csv
+
+THROWNWEAPONINFO common:/data/ThrownWeaponInfo.xml
+WEAPONINFO common:/data/WeaponInfo.xml
+
+PLAYER platform:/models/cdimages/playerped.rpf
+DELAYED_IDE common:/data/defaultvpaext.ide

@@ -1,0 +1,18 @@
+# Archivos generados por el juego / los scripts
+*.log
+juego/scripts/MisAutos.txt
+juego/scripts/NaftaEstado.txt
+
+# Binarios armados localmente (contienen modelos de terceros)
+*.img
+*.rpf
+*.wdr
+*.wtd
+*.wad
+
+# Python
+__pycache__/
+*.pyc
+
+# Clave AES de Rockstar (nunca subir)
+key.bin

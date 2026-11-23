@@ -1,0 +1,181 @@
+# TACE.Lite v1.2 // GTAIV gta.dat
+
+# DISABLED FILES
+
+# IDE FILES
+IDE platform:/data/maps/generic/procobj.ide
+IDE platform:/data/maps/props/windows/gen_win.ide
+IDE platform:/data/maps/props/street/rooftop.ide
+IDE platform:/data/maps/props/street/amenitie.ide
+IDE platform:/data/maps/props/street/elecbox.ide
+IDE platform:/data/maps/props/street/misc.ide
+IDE platform:/data/maps/props/roadside/rubbish.ide
+IDE platform:/data/maps/props/roadside/bins.ide
+IDE platform:/data/maps/props/roadside/sign.ide
+IDE platform:/data/maps/props/roadside/fences.ide
+IDE platform:/data/maps/props/roadside/works.ide
+IDE platform:/data/maps/props/roadside/lamppost.ide
+IDE platform:/data/maps/props/roadside/traffic.ide
+IDE platform:/data/maps/props/roadside/crates.ide
+IDE platform:/data/maps/props/roadside/bllbrd.ide
+IDE platform:/data/maps/props/roadside/st_vend.ide
+IDE platform:/data/maps/props/doors/ext_door.ide
+IDE platform:/data/maps/props/doors/int_door.ide
+IDE platform:/data/maps/props/lev_des/minigame.ide
+IDE platform:/data/maps/props/lev_des/icons.ide
+IDE platform:/data/maps/props/lev_des/mission_int.ide
+IDE platform:/data/maps/props/industrial/industrial.ide
+IDE platform:/data/maps/props/industrial/skips.ide
+IDE platform:/data/maps/props/industrial/drums.ide
+IDE platform:/data/maps/props/industrial/railway.ide
+IDE platform:/data/maps/props/residential/lights.ide
+IDE platform:/data/maps/props/residential/soft.ide
+IDE platform:/data/maps/props/residential/bedroom.ide
+IDE platform:/data/maps/props/residential/electrical.ide
+IDE platform:/data/maps/props/residential/bathroom.ide
+IDE platform:/data/maps/props/residential/details.ide
+IDE platform:/data/maps/props/residential/dining.ide
+IDE platform:/data/maps/props/residential/kitchen.ide
+IDE platform:/data/maps/props/commercial/7_11.ide
+IDE platform:/data/maps/props/commercial/clothes.ide
+IDE platform:/data/maps/props/commercial/bar.ide
+IDE platform:/data/maps/props/commercial/fastfood.ide
+IDE platform:/data/maps/props/commercial/office.ide
+IDE platform:/data/maps/props/commercial/beauty.ide
+IDE platform:/data/maps/props/vegetation/ext_veg.ide
+IDE platform:/data/maps/props/vegetation/int_veg.ide
+
+IDE platform:/data/maps/interiors/int_props/props_ab.ide
+IDE platform:/data/maps/interiors/int_props/props_ah.ide
+IDE platform:/data/maps/interiors/int_props/props_km.ide
+IDE platform:/data/maps/interiors/int_props/props_ld.ide
+IDE platform:/data/maps/interiors/int_props/props_mp.ide
+IDE platform:/data/maps/interiors/int_props/props_ss.ide
+IDE platform:/data/maps/interiors/generic/bars_1.ide
+IDE platform:/data/maps/interiors/generic/bars_2.ide
+IDE platform:/data/maps/interiors/generic/bars_3.ide
+IDE platform:/data/maps/interiors/generic/blocks.ide
+IDE platform:/data/maps/interiors/generic/blocks_2.ide
+IDE platform:/data/maps/interiors/generic/blocks_3.ide
+IDE platform:/data/maps/interiors/generic/brownstones.ide
+IDE platform:/data/maps/interiors/generic/homes_1.ide
+IDE platform:/data/maps/interiors/generic/homes_2.ide
+IDE platform:/data/maps/interiors/generic/homes_3.ide
+IDE platform:/data/maps/interiors/generic/indust_1.ide
+IDE platform:/data/maps/interiors/generic/public_1.ide
+IDE platform:/data/maps/interiors/generic/public_2.ide
+IDE platform:/data/maps/interiors/generic/public_3.ide
+IDE platform:/data/maps/interiors/generic/retail_1.ide
+IDE platform:/data/maps/interiors/generic/retail_2.ide
+IDE platform:/data/maps/interiors/generic/retail_3.ide
+IDE platform:/data/maps/interiors/generic/retail_4.ide
+IDE platform:/data/maps/interiors/mission/level_1.ide
+IDE platform:/data/maps/interiors/mission/level_2.ide
+IDE platform:/data/maps/interiors/mission/level_3.ide
+IDE platform:/data/maps/interiors/mission/level_4.ide
+IDE platform:/data/maps/interiors/mission/level_5.ide
+IDE platform:/data/maps/interiors/mission/level_6.ide
+
+IDE platform:/data/maps/east/bronx_e.ide
+IDE platform:/data/maps/east/bronx_e2.ide
+IDE platform:/data/maps/east/bronx_w.ide
+IDE platform:/data/maps/east/bronx_w2.ide
+IDE platform:/data/maps/east/brook_n.ide
+IDE platform:/data/maps/east/brook_n2.ide
+IDE platform:/data/maps/east/brook_s.ide
+IDE platform:/data/maps/east/brook_s2.ide
+IDE platform:/data/maps/east/brook_s3.ide
+IDE platform:/data/maps/east/east_xr.ide
+IDE platform:/data/maps/east/queens_e.ide
+IDE platform:/data/maps/east/queens_m.ide
+IDE platform:/data/maps/east/queens_w.ide
+IDE platform:/data/maps/east/queens_w2.ide
+IDE platform:/data/maps/jersey/nj_01.ide
+IDE platform:/data/maps/jersey/nj_02.ide
+IDE platform:/data/maps/jersey/nj_03.ide
+IDE platform:/data/maps/jersey/nj_04e.ide
+IDE platform:/data/maps/jersey/nj_04w.ide
+IDE platform:/data/maps/jersey/nj_05.ide
+IDE platform:/data/maps/jersey/nj_docks.ide
+IDE platform:/data/maps/jersey/nj_liberty.ide
+IDE platform:/data/maps/jersey/nj_xref.ide
+IDE platform:/data/maps/manhat/manhat01.ide
+IDE platform:/data/maps/manhat/manhat02.ide
+IDE platform:/data/maps/manhat/manhat03.ide
+IDE platform:/data/maps/manhat/manhat04.ide
+IDE platform:/data/maps/manhat/manhat05.ide
+IDE platform:/data/maps/manhat/manhat06.ide
+IDE platform:/data/maps/manhat/manhat07.ide
+IDE platform:/data/maps/manhat/manhat08.ide
+IDE platform:/data/maps/manhat/manhat09.ide
+IDE platform:/data/maps/manhat/manhat10.ide
+IDE platform:/data/maps/manhat/manhat11.ide
+IDE platform:/data/maps/manhat/manhat12.ide
+IDE platform:/data/maps/manhat/manhatsw.ide
+IDE platform:/data/maps/manhat/manhatxr.ide
+IDE platform:/data/maps/manhat/subwayxr.ide
+
+# IMG FILES
+IMGLIST common:/data/images.txt
+
+# IPL FILES
+IPL common:/data/info.zon
+IPL common:/data/map.zon
+
+IPL platform:/data/maps/east/bronx_e.ipl
+IPL platform:/data/maps/east/bronx_e2.ipl
+IPL platform:/data/maps/east/bronx_w.ipl
+IPL platform:/data/maps/east/bronx_w2.ipl
+IPL platform:/data/maps/east/brook_n.ipl
+IPL platform:/data/maps/east/brook_n2.ipl
+IPL platform:/data/maps/east/brook_s.ipl
+IPL platform:/data/maps/east/brook_s2.ipl
+IPL platform:/data/maps/east/brook_s3.ipl
+IPL platform:/data/maps/east/queens_e.ipl
+IPL platform:/data/maps/east/queens_m.ipl
+IPL platform:/data/maps/east/queens_w.ipl
+IPL platform:/data/maps/east/queens_w2.ipl
+IPL platform:/data/maps/jersey/nj_01.ipl
+IPL platform:/data/maps/jersey/nj_02.ipl
+IPL platform:/data/maps/jersey/nj_03.ipl
+IPL platform:/data/maps/jersey/nj_04e.ipl
+IPL platform:/data/maps/jersey/nj_04w.ipl
+IPL platform:/data/maps/jersey/nj_05.ipl
+IPL platform:/data/maps/jersey/nj_docks.ipl
+IPL platform:/data/maps/jersey/nj_liberty.ipl
+IPL platform:/data/maps/manhat/manhat01.ipl
+IPL platform:/data/maps/manhat/manhat02.ipl
+IPL platform:/data/maps/manhat/manhat03.ipl
+IPL platform:/data/maps/manhat/manhat04.ipl
+IPL platform:/data/maps/manhat/manhat05.ipl
+IPL platform:/data/maps/manhat/manhat06.ipl
+IPL platform:/data/maps/manhat/manhat07.ipl
+IPL platform:/data/maps/manhat/manhat08.ipl
+IPL platform:/data/maps/manhat/manhat09.ipl
+IPL platform:/data/maps/manhat/manhat10.ipl
+IPL platform:/data/maps/manhat/manhat11.ipl
+IPL platform:/data/maps/manhat/manhat12.ipl
+IPL platform:/data/maps/manhat/manhatsw.ipl
+
+IPL common:/data/maps/paths.ipl
+IPL common:/data/maps/paths2.ipl
+IPL common:/data/maps/paths3.ipl
+IPL common:/data/maps/paths4.ipl
+IPL common:/data/maps/cull.ipl
+
+IPL common:/data/maps/occlu.ipl
+
+IPL common:/data/maps/ambient.ipl
+IPL common:/data/maps/scenarios.ipl
+IPL common:/data/maps/scenario2.ipl
+
+IPL platform:/data/maps/generic/lodcull_e.ipl
+IPL platform:/data/maps/generic/lodcull_j.ipl
+IPL platform:/data/maps/generic/lodcull_m.ipl
+
+# DATA FILES
+WATER common:/data/water.dat common:/data/waterlow.dat
+#
+# Characters
+#
+DELAYED_IDE common:/DATA/newchar.ide
