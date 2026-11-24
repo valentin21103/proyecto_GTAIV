@@ -67,7 +67,7 @@ namespace VidaNikoMod
         }
         const int GASA = 0, ANALGESICO = 1, JERINGA = 2;
         Obj[] objs = {
-            new Obj("Gasa", "frena la sangre, cura todo", 0, 80, 3, 3500, 0, 0, 0, "cop_search_idles", "idle_check_under_vehicle", null, null),
+            new Obj("Gasa", "frena la sangre, cura todo", 0, 80, 3, 4500, 0, 0, 0, "gestures@male", "time", null, null),
             new Obj("Analgesico", "cura la mitad", 0, 40, 3, 1200, 0, 0, 0, "amb@beg_standing", "take_obj", null, null),
             new Obj("Jeringa", "cura de a poco", 0, 150, 2, 1200, 0, 0, 0, "amb@beg_standing", "take_obj", null, null),
             new Obj("Hamburguesa", "hambre +50", 1, 8, 3, 6000, 50, 0, 0, "amb@burger_idle", "eat_stand", "amb@cafe_eat_idles", "sit_eat"),
@@ -102,8 +102,8 @@ namespace VidaNikoMod
         bool tienda; int tiendaSel; Lugar tiendaLugar; List<int> tiendaObjs = new List<int>();
         // menu para registrar lugares
         bool regMenu; int regSel;
-        static readonly string[] TiposLugar = { "FARMACIA", "RESTAURANTE", "ALMACEN" };
-        static readonly string[] DescLugar = { "curaciones y agua", "comida y bebida", "bebidas, snacks y cigarrillos" };
+        static readonly string[] TiposLugar = { "FARMACIA", "RESTAURANTE", "ALMACEN", "BANO" };
+        static readonly string[] DescLugar = { "curaciones y agua", "comida y bebida", "bebidas, snacks y cigarrillos", "tu casa: ahi podes ir al bano" };
         // objeto en la mano y cigarrillo
         GTA.Object prop; int ptfx = -1; int fumarFase, fumarHasta, proximaPitada;
         bool humo = true;
@@ -295,6 +295,7 @@ namespace VidaNikoMod
                 LeerLugares(ArchivoLugares, "FARMACIA", true);
                 LeerLugares(ArchivoLugares, "RESTAURANTE", true);
                 LeerLugares(ArchivoLugares, "ALMACEN", true);
+                LeerLugares(ArchivoLugares, "BANO", false);
                 LeerLugares(ArchivoNafta, "ESTACION", false);
             }
             catch { }
@@ -323,6 +324,7 @@ namespace VidaNikoMod
 
         void PonerBlip(Lugar g)
         {
+            if (g.Tipo == "BANO") return;   // tu casa no necesita icono
             // iconos del juego, chicos y solo cerca (como las tiendas normales, no como misiones)
             try
             {
@@ -338,7 +340,7 @@ namespace VidaNikoMod
 
         static string NombreTipo(string tipo)
         {
-            return tipo == "FARMACIA" ? "Farmacia" : tipo == "ALMACEN" ? "Almacen" : "Restaurante";
+            return tipo == "FARMACIA" ? "Farmacia" : tipo == "ALMACEN" ? "Almacen" : tipo == "BANO" ? "Bano" : "Restaurante";
         }
 
         void Registrar(Ped me, string tipo)
@@ -356,15 +358,31 @@ namespace VidaNikoMod
                     p.X.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Y.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Z.ToString("0.00", CultureInfo.InvariantCulture) + " | 15\r\n");
-                Aviso(NombreTipo(tipo) + " registrado aca: habla con el empleado (E) para comprar");
+                Aviso(tipo == "BANO" ? "Bano registrado: aca podes ir de cuerpo (mantener N)" : NombreTipo(tipo) + " registrado aca: habla con el empleado (E) para comprar");
             }
             catch { Aviso("No se pudo registrar el lugar"); }
         }
 
         Lugar TiendaCerca(Vector3 p)
         {
-            foreach (Lugar g in lugares) if (g.Pos.DistanceTo(p) <= g.Radio) return g;
+            foreach (Lugar g in lugares) if (g.Tipo != "BANO" && g.Pos.DistanceTo(p) <= g.Radio) return g;
             return null;
+        }
+
+        // inodoros y banos quimicos del mapa
+        static readonly string[] ModelosBano = { "GB_toiletA", "CJ_MED_TOILET_2", "Lev1_Toilet", "Lev5_H3toilet", "toilet_MH2", "Toilet_trough",
+            "GB_portaloo01", "CJ_PORTA_CABIN_1", "CJ_PORTA_CABIN_2", "CJ_PORTA_CABIN_3", "Portacabin", "Park_Toilet", "PkToilets_MH06" };
+
+        bool EnBano(Ped me)
+        {
+            Vector3 p = me.Position;
+            foreach (Lugar g in lugares) if (g.Pos.DistanceTo(p) <= (g.Tipo == "BANO" ? 12f : g.Radio)) return true;
+            foreach (string m in ModelosBano)
+            {
+                try { if (Function.Call<bool>("DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS", p.X, p.Y, p.Z, 4.0f, new Model(m).Hash)) return true; }
+                catch { }
+            }
+            return false;
         }
 
         List<int> ObjsDeTienda(Lugar g)
@@ -453,7 +471,8 @@ namespace VidaNikoMod
             "amb@nightclub_ext", "amb@smk_scn_idles", "amb@burger_idle", "amb@hotdog_idle", "amb@eat_chocolate",
             "amb@drink_bottle", "amb@drink_can", "amb@cafe_eat_idles", "amb@bnch_eat_idl", "amb@beg_standing",
             "cop_search_idles", "amb@hotdog_hold", "move_m@cower", "amb@yawn", "playidles_tired_1h",
-            "dam_rec_player", "amb@burgercart", "amb@ffood_server" };
+            "dam_rec_player", "amb@burgercart", "amb@ffood_server",
+            "missttkill", "amb@smoking_create", "amb@smoking", "amb@smoking_destroy", "gestures@male" };
         int proximaCarga;
         void PrecargarAnims(int now)
         {
@@ -471,7 +490,7 @@ namespace VidaNikoMod
         // valores probados del Smoking Mod (hueso 1232 = mano derecha, 1205 = cabeza)
         const string ArchivoProps = "scripts\\Props.ini";
         static readonly string[] PropsDefecto = {
-            "; v2 - Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
+            "; v3 - Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
             "; Se relee cada vez que usas un objeto: podes ajustar con el juego abierto.",
             "BM_CHAR_FAG_F = 0.015, -0.005, -0.021 | 0, 0, 0",
             "AMB_BURG = -0.05, 0.0, 0.035 | 0, 0, 0",
@@ -481,7 +500,9 @@ namespace VidaNikoMod
             "AMB_CAN_DRINK_1 = 0, 0, 0 | 0, 0, 0",
             "AMB_WINE = 0, 0, 0 | 0, 0, 0",
             "; chorro al orinar (hueso de la pelvis): x, y, z | rotX, rotY, rotZ | tamano",
-            "CHORRO = 0.0, 0.18, -0.05 | 0, 0, 0 | 0.35",
+            "CHORRO = 0.0, 0.15, 0.0 | 0, 0, 0 | 1.0",
+            "; bidon de nafta en la mano (MisAutos)",
+            "CJ_GAS_CANZ = 0.08, 0.0, -0.22 | 0, 0, 0",
         };
 
         bool LeerProp(string modelo, out Vector3 pos, out Vector3 rot, out float escala)
@@ -490,7 +511,7 @@ namespace VidaNikoMod
             bool hay = false;
             try
             {
-                if (!File.Exists(ArchivoProps) || File.ReadAllText(ArchivoProps).IndexOf("; v2") < 0) File.WriteAllLines(ArchivoProps, PropsDefecto);
+                if (!File.Exists(ArchivoProps) || File.ReadAllText(ArchivoProps).IndexOf("; v3") < 0) File.WriteAllLines(ArchivoProps, PropsDefecto);
                 foreach (string raw in File.ReadAllLines(ArchivoProps))
                 {
                     string l = raw.Trim();
@@ -543,6 +564,16 @@ namespace VidaNikoMod
             propPendiente = null;
         }
 
+        // suelta el objeto de la mano (la colilla cae al piso)
+        void TirarProp()
+        {
+            propPendiente = null;
+            if (ptfx >= 0) { try { Function.Call("STOP_PTFX", ptfx); } catch { } ptfx = -1; }
+            if (prop == null) return;
+            try { if (Game.Exists(prop)) { Function.Call("DETACH_OBJECT", prop, true); prop.NoLongerNeeded(); } } catch { }
+            prop = null;
+        }
+
         void QuitarProp()
         {
             propPendiente = null;
@@ -552,7 +583,7 @@ namespace VidaNikoMod
             prop = null;
         }
 
-        // chorro de agua (el de la regadera del juego) saliendo de la pelvis
+        // chorro: el mismo efecto que usan los NPC que orinan en las misiones (ped_pissing)
         int chorro = -1;
         void PonerChorro(Ped me)
         {
@@ -561,7 +592,7 @@ namespace VidaNikoMod
             {
                 Vector3 pos, rot; float esc;
                 LeerProp("CHORRO", out pos, out rot, out esc);
-                chorro = Function.Call<int>("START_PTFX_ON_PED_BONE", "anim_watering_can", me, pos.X, pos.Y, pos.Z, rot.X, rot.Y, rot.Z, 417, esc);
+                chorro = Function.Call<int>("START_PTFX_ON_PED_BONE", "ped_pissing", me, pos.X, pos.Y, pos.Z, rot.X, rot.Y, rot.Z, 417, esc);
             }
             catch { chorro = -1; }
         }
@@ -788,16 +819,17 @@ namespace VidaNikoMod
                 if (sentado != 0) { Aviso("Parate para fumar"); return; }
                 o.Tengo--;
                 accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 3500; accionDur = 3500;
-                Arriba(me, "amb@nightclub_ext", "smoke_light_up", false, 3500);
+                fumarCamina = Moviendose();
+                Arriba(me, "amb@smoking_create", fumarCamina ? "walk_create" : "stand_create", false, 3500);
                 PonerProp(me, o.Prop);
                 return;
             }
             o.Tengo--;
             accion = 1; accionObj = i; accionFin = now + o.Ms; accionDur = o.Ms;
-            if (i == GASA && sentado == 0)
+            if (i == GASA)
             {
-                // la gasa es de cuerpo entero (se agacha); si te moves se corta
-                Anim(me, o.Set, o.Clip, false);
+                // se mira y envuelve el antebrazo (no hay animacion de vendarse en el juego: la mas parecida)
+                Arriba(me, o.Set, o.Clip, true, 0);
                 return;
             }
             if (sentado == 2 && o.SetSentado != null) Arriba(me, o.SetSentado, o.ClipSentado, true, 0);
@@ -905,10 +937,14 @@ namespace VidaNikoMod
             {
                 fumarFase = 2; fumarHasta = now + 25000; proximaPitada = now + 5000; proximoHumo = now + 3000;
                 accionFin = fumarHasta; accionDur = 25000;
-                Arriba(me, "amb@smk_scn_idles", "stand_smoke", true, 0);
+                fumarCamina = Moviendose();
+                Arriba(me, "amb@smoking", fumarCamina ? "walk_smoke" : "stand_smoke", true, 0);
             }
             else if (fumarFase == 2)
             {
+                // como los NPC: una animacion para parado y otra caminando
+                bool camina = Moviendose();
+                if (camina != fumarCamina) { fumarCamina = camina; Arriba(me, "amb@smoking", camina ? "walk_smoke" : "stand_smoke", true, 0); }
                 if (now >= proximaPitada) { proximaPitada = now + 5000; if (vida < vidaMax) SetVida(me, vida + 1); }
                 if (humo && now >= proximoHumo)
                 {
@@ -918,16 +954,18 @@ namespace VidaNikoMod
                 if (uPress || now >= fumarHasta)
                 {
                     fumarFase = 3; accionFin = now + 2000; accionDur = 2000;
-                    Arriba(me, "amb@nightclub_ext", "smoke_stub_out", false, 2000);
+                    Arriba(me, "amb@smoking_destroy", "walk_destroy", false, 2000);
                 }
             }
             else if (fumarFase == 3 && now >= accionFin) TerminarFumar(me, true);
             if (now > accionFin + 4000) TerminarFumar(me, fumarFase >= 2);   // por si algo se traba
         }
 
+        bool fumarCamina;
+
         void TerminarFumar(Ped me, bool fumo)
         {
-            QuitarProp();
+            if (fumo && fumarFase == 3) TirarProp(); else QuitarProp();
             CortarArriba(me);
             if (fumo) { hambre = Math.Min(100f, hambre + 10f); Aviso("Fumaste un cigarrillo. Te quedan " + objs[accionObj].Tengo); }
             fumarFase = 0; accion = 0;
@@ -1016,7 +1054,7 @@ namespace VidaNikoMod
             if (accion != 0)
             {
                 TickProp(me);
-                bool cuerpoEntero = accion == 3 || (accion == 1 && accionObj == GASA && sentado == 0);
+                bool cuerpoEntero = accion == 3;
                 bool cortar = !aPie || now > accionFin + 4000 || ((cuerpoEntero || accion == 2) && Moviendose());
                 if (cortar)
                 {
@@ -1160,13 +1198,14 @@ namespace VidaNikoMod
                 else
                 {
                     accion = 2; accionFin = now + 7000; accionDur = 7000;
-                    Arriba(me, "amb@hotdog_hold", "hold_stand", true, 0);
+                    Anim(me, "missttkill", "piss_loop", true);
                     PonerChorro(me);
                 }
             }
             else if (nTipo == 2 && necesidades)
             {
                 if (intestino < 25f) Aviso("No tenes ganas de ir de cuerpo");
+                else if (!EnBano(me)) Aviso("Necesitas un bano: un bar, restaurante, tienda, un bano quimico o tu casa (registrala con Ctrl+F8)");
                 else
                 {
                     accion = 3; accionFin = now + 9000; accionDur = 9000;

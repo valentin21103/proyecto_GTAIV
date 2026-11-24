@@ -607,7 +607,9 @@ namespace MisAutosMod
             if (carga == 1 && now >= cargaFase)
             {
                 carga = 2;
-                Anim(me, "amb@bouncer_idles_b", "lookaround_a", true);
+                // misma pose que los NPC que riegan con la regadera: sirve para la manguera y el bidon
+                Anim(me, "amb@wcan_idles", "stand_idle_a", true);
+                if (cargaBidon) PonerBidon(me);
                 cargaUltimo = now;
             }
             else if (carga == 2)
@@ -667,7 +669,7 @@ namespace MisAutosMod
             if (t != null) ids.Add(2);
             bool hayActivo = false;
             try { hayActivo = activo != null && activoIdx >= 0 && activoIdx < autos.Count && Game.Exists(activo) && activo.Position.DistanceTo(me.Position) < 7f; } catch { }
-            if (hayActivo) ids.Add(3);
+            if (hayActivo || t != null) ids.Add(3);
             if (ids.Count == 0) { CerrarMenuNafta(); return; }
             if (selNafta >= ids.Count) selNafta = ids.Count - 1;
             if (up) selNafta = (selNafta + ids.Count - 1) % ids.Count;
@@ -680,6 +682,7 @@ namespace MisAutosMod
                 {
                     if (t == null) Aviso("Acercate a tu auto para cargar nafta");
                     else if (t.L >= t.Cap - 0.2f) Aviso("El tanque ya esta lleno");
+                    else if (!EnTapa(me, t.V)) Aviso("Ponete al costado del auto, atras de la puerta del conductor (tapa de nafta)");
                     else { CerrarMenuNafta(); EmpezarCarga(me, t, est, false, now); return; }
                 }
                 else if (id == 1)
@@ -692,11 +695,13 @@ namespace MisAutosMod
                 {
                     if (bidones <= 0) Aviso("No tenes bidones");
                     else if (t.L >= t.Cap - 0.5f) Aviso("El tanque ya esta lleno");
+                    else if (!EnTapa(me, t.V)) Aviso("Ponete al costado del auto, atras de la puerta del conductor (tapa de nafta)");
                     else { CerrarMenuNafta(); EmpezarCarga(me, t, null, true, now); return; }
                 }
                 else
                 {
-                    if (!zona) Aviso("Ponete atras de tu auto para abrir el baul");
+                    if (!hayActivo) Aviso("Este auto no es tuyo: subite y apreta L para guardarlo, asi tiene baul");
+                    else if (!zona) Aviso("Ponete atras de tu auto, pegado al baul");
                     else { CerrarMenuNafta(); AbrirBaul(me); return; }
                 }
             }
@@ -720,7 +725,7 @@ namespace MisAutosMod
                 else
                 {
                     izq = "Abrir baul";
-                    der = zona ? autos[activoIdx].Baul.Count + "/" + MaxBaul + " armas" : "ponete atras del auto";
+                    der = !hayActivo ? "guardalo con L" : zona ? autos[activoIdx].Baul.Count + "/" + MaxBaul + " armas" : "ponete atras del auto";
                     apagado = !zona;
                 }
                 IV.Item(izq, der, x, y, w, i == selNafta, apagado, 0.1f);
@@ -738,13 +743,15 @@ namespace MisAutosMod
             if (bidon) { bidones--; sucio = true; }
             try { Function.Call("SET_CAR_ENGINE_ON", t.V, false, true); } catch { }
             try { me.Task.ClearAllImmediately(); } catch { }
-            try { me.Task.TurnTo(t.V.Position); } catch { }
-            Anim(me, "amb@car_stash", "open_boot", false);
+            // mirar a la tapa de nafta
+            try { me.Task.TurnTo(t.V.GetOffsetPosition(new Vector3(0f, -0.6f, 0f))); } catch { }
+            if (bidon) PedirBidon();
         }
 
         void TerminarCarga(Ped me, string motivo)
         {
             if (carga == 0) return;
+            QuitarBidon();
             if (!cargaBidon && cargaDeuda > 0.01f)
             {
                 int p = (int)Math.Ceiling(cargaDeuda);
@@ -758,8 +765,47 @@ namespace MisAutosMod
             sucio = true;
             if (me.isInVehicle()) { carga = 0; return; }
             carga = 3;
-            cargaFase = Game.GameTime + 1300;
-            Anim(me, "car_boot", "close_boot", false);
+            cargaFase = Game.GameTime + 700;
+            QuitarBidon();
+            try { me.Task.ClearAll(); } catch { }
+        }
+
+        // ---- bidon en la mano (modelo CJ_Gas_Canz del juego; posicion en scripts\Props.ini) ----
+        GTA.Object bidonObj;
+        void PedirBidon() { try { Function.Call("REQUEST_MODEL", new Model("CJ_Gas_Canz").Hash); } catch { } }
+
+        void PonerBidon(Ped me)
+        {
+            QuitarBidon();
+            try
+            {
+                Model m = new Model("CJ_Gas_Canz");
+                if (!Function.Call<bool>("HAS_MODEL_LOADED", m.Hash)) return;
+                bidonObj = World.CreateObject(m, me.Position);
+                if (bidonObj == null || !Game.Exists(bidonObj)) { bidonObj = null; return; }
+                float x = 0.08f, y = 0f, z = -0.22f, rx = 0f, ry = 0f, rz = 0f;
+                try
+                {
+                    foreach (string raw in File.ReadAllLines("scripts\\Props.ini"))
+                    {
+                        string l = raw.Trim();
+                        if (!l.ToUpperInvariant().StartsWith("CJ_GAS_CANZ") || l.IndexOf('=') < 0) continue;
+                        string[] p = l.Substring(l.IndexOf('=') + 1).Split('|');
+                        string[] a = p[0].Split(',');
+                        if (a.Length >= 3) { x = F(a[0], x); y = F(a[1], y); z = F(a[2], z); }
+                        if (p.Length > 1) { string[] b = p[1].Split(','); if (b.Length >= 3) { rx = F(b[0], 0); ry = F(b[1], 0); rz = F(b[2], 0); } }
+                    }
+                }
+                catch { }
+                Function.Call("ATTACH_OBJECT_TO_PED", bidonObj, me, 1232, x, y, z, rx, ry, rz, 0);
+            }
+            catch { bidonObj = null; }
+        }
+
+        void QuitarBidon()
+        {
+            try { if (bidonObj != null && Game.Exists(bidonObj)) { Function.Call("DETACH_OBJECT", bidonObj, false); bidonObj.Delete(); } } catch { }
+            bidonObj = null;
         }
 
 
@@ -805,19 +851,47 @@ namespace MisAutosMod
             return r;
         }
 
+        // punto detras del paragolpes, con el tamano real del modelo
         Vector3 Trasera(Vehicle v)
         {
+            try
+            {
+                Vector3 mn = new Vector3(0f, 0f, 0f), mx = new Vector3(0f, 0f, 0f);
+                v.Model.GetDimensions(ref mn, ref mx);
+                if (mn.Y < -0.5f) return v.GetOffsetPosition(new Vector3(0f, mn.Y - 0.5f, 0f));
+            }
+            catch { }
             double h = v.Heading * Math.PI / 180.0;
             Vector3 p = v.Position;
-            return new Vector3(p.X + (float)Math.Sin(h) * 2.4f, p.Y - (float)Math.Cos(h) * 2.4f, p.Z);
+            return new Vector3(p.X + (float)Math.Sin(h) * 2.6f, p.Y - (float)Math.Cos(h) * 2.6f, p.Z);
         }
+
+        // costado izquierdo de atras (tapa de nafta)
+        Vector3 Tapa(Vehicle v)
+        {
+            try
+            {
+                Vector3 mn = new Vector3(0f, 0f, 0f), mx = new Vector3(0f, 0f, 0f);
+                v.Model.GetDimensions(ref mn, ref mx);
+                if (mn.X < -0.3f) return v.GetOffsetPosition(new Vector3(mn.X - 0.45f, mn.Y * 0.45f, 0f));
+            }
+            catch { }
+            return v.GetOffsetPosition(new Vector3(-1.4f, -1.0f, 0f));
+        }
+
+        bool EnTapa(Ped me, Vehicle v)
+        {
+            try { Vector3 a = Tapa(v), b = me.Position; return new Vector3(a.X, a.Y, b.Z).DistanceTo(b) <= 1.2f; } catch { return false; }
+        }
+
+        static float Plano(Vector3 a, Vector3 b) { float dx = a.X - b.X, dy = a.Y - b.Y; return (float)Math.Sqrt(dx * dx + dy * dy); }
 
         bool EnZonaBaul(Ped me)
         {
             try
             {
                 return activo != null && activoIdx >= 0 && activoIdx < autos.Count && Game.Exists(activo)
-                    && !me.isInVehicle() && me.isAliveAndWell && Trasera(activo).DistanceTo(me.Position) <= 2.6f;
+                    && !me.isInVehicle() && me.isAliveAndWell && Plano(Trasera(activo), me.Position) <= 1.5f;
             }
             catch { return false; }
         }
@@ -845,7 +919,7 @@ namespace MisAutosMod
         {
             bool t = teclaE || Pressed(VK_BACK), up = Pressed(VK_UP), down = Pressed(VK_DOWN), left = Pressed(VK_LEFT), right = Pressed(VK_RIGHT), enter = Pressed(VK_ENTER);
             bool valido = false;
-            try { valido = activo != null && Game.Exists(activo) && activoIdx >= 0 && activoIdx < autos.Count && me.isAliveAndWell && !me.isInVehicle() && Trasera(activo).DistanceTo(me.Position) < 3.5f; } catch { }
+            try { valido = activo != null && Game.Exists(activo) && activoIdx >= 0 && activoIdx < autos.Count && me.isAliveAndWell && !me.isInVehicle() && Plano(Trasera(activo), me.Position) < 3.0f; } catch { }
             if (t || !valido) { CerrarBaul(me); return; }
             Auto a = autos[activoIdx];
             List<int[]> encima = ArmasEncima(me);
