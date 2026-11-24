@@ -770,26 +770,26 @@ namespace MisAutosMod
             try { me.Task.ClearAll(); } catch { }
         }
 
-        // ---- bidon en la mano (modelo CJ_Gas_Canz del juego; posicion en scripts\Props.ini) ----
+        // ---- bidon en la mano (lata de nafta CJ_OIL_TIN_1 del juego; posicion en scripts\Props.ini) ----
         GTA.Object bidonObj;
-        void PedirBidon() { try { Function.Call("REQUEST_MODEL", new Model("CJ_Gas_Canz").Hash); } catch { } }
+        void PedirBidon() { try { Function.Call("REQUEST_MODEL", new Model("CJ_OIL_TIN_1").Hash); } catch { } }
 
         void PonerBidon(Ped me)
         {
             QuitarBidon();
             try
             {
-                Model m = new Model("CJ_Gas_Canz");
+                Model m = new Model("CJ_OIL_TIN_1");
                 if (!Function.Call<bool>("HAS_MODEL_LOADED", m.Hash)) return;
                 bidonObj = World.CreateObject(m, me.Position);
                 if (bidonObj == null || !Game.Exists(bidonObj)) { bidonObj = null; return; }
-                float x = 0.08f, y = 0f, z = -0.22f, rx = 0f, ry = 0f, rz = 0f;
+                float x = 0.06f, y = 0f, z = -0.18f, rx = 0f, ry = 0f, rz = 0f;
                 try
                 {
                     foreach (string raw in File.ReadAllLines("scripts\\Props.ini"))
                     {
                         string l = raw.Trim();
-                        if (!l.ToUpperInvariant().StartsWith("CJ_GAS_CANZ") || l.IndexOf('=') < 0) continue;
+                        if (!l.ToUpperInvariant().StartsWith("CJ_OIL_TIN_1") || l.IndexOf('=') < 0) continue;
                         string[] p = l.Substring(l.IndexOf('=') + 1).Split('|');
                         string[] a = p[0].Split(',');
                         if (a.Length >= 3) { x = F(a[0], x); y = F(a[1], y); z = F(a[2], z); }

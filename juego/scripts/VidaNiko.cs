@@ -551,7 +551,7 @@ namespace VidaNikoMod
         // valores probados del Smoking Mod (hueso 1232 = mano derecha, 1205 = cabeza)
         const string ArchivoProps = "scripts\\Props.ini";
         static readonly string[] PropsDefecto = {
-            "; v3 - Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
+            "; v4 - Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
             "; Se relee cada vez que usas un objeto: podes ajustar con el juego abierto.",
             "BM_CHAR_FAG_F = 0.015, -0.005, -0.021 | 0, 0, 0",
             "AMB_BURG = -0.05, 0.0, 0.035 | 0, 0, 0",
@@ -563,7 +563,7 @@ namespace VidaNikoMod
             "; chorro al orinar (hueso de la pelvis): x, y, z | rotX, rotY, rotZ | tamano",
             "CHORRO = 0.0, 0.15, 0.0 | 0, 0, 0 | 1.0",
             "; bidon de nafta en la mano (MisAutos)",
-            "CJ_GAS_CANZ = 0.08, 0.0, -0.22 | 0, 0, 0",
+            "CJ_OIL_TIN_1 = 0.06, 0.0, -0.18 | 0, 0, 0",
         };
 
         bool LeerProp(string modelo, out Vector3 pos, out Vector3 rot, out float escala)
@@ -572,7 +572,7 @@ namespace VidaNikoMod
             bool hay = false;
             try
             {
-                if (!File.Exists(ArchivoProps) || File.ReadAllText(ArchivoProps).IndexOf("; v3") < 0) File.WriteAllLines(ArchivoProps, PropsDefecto);
+                if (!File.Exists(ArchivoProps) || File.ReadAllText(ArchivoProps).IndexOf("; v4") < 0) File.WriteAllLines(ArchivoProps, PropsDefecto);
                 foreach (string raw in File.ReadAllLines(ArchivoProps))
                 {
                     string l = raw.Trim();
