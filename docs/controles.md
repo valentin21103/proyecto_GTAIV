@@ -19,6 +19,7 @@
 | `Ctrl+F8` | Menú para registrar el lugar actual como farmacia, restaurante, almacén o baño (tu casa) (`scripts/Lugares.ini`) | VidaNiko |
 | `Ctrl+F9` | Registrar farmacia directo | VidaNiko |
 | `Z` | Sentarse (de espaldas al banco); `Z` o `W` para pararse. Sentado comés y tomás sentado | VidaNiko |
+| `Ctrl+F7` / `Ctrl+Shift+F7` | Cibercafé: pone una computadora si no hay / abre la computadora directo (cuando el juego no deja usarlas por los autos agregados) | VidaNiko |
 | `N` (tocar) | Orinar: vacía la vejiga y la comida te llena x1.25 por 10 min | VidaNiko |
 | `N` (mantener, cerca de un baño) | Ir de cuerpo (pantalla a negro). Sirve en bares, restaurantes, tiendas, estaciones, baños químicos o un baño registrado: vacía el intestino y la comida te llena x1.5 por 15 min | VidaNiko |
 | `I` (manejando) | Apagar / prender motor y luces | MotorAuto |

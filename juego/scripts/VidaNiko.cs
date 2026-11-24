@@ -46,7 +46,7 @@ namespace VidaNikoMod
         static extern short GetAsyncKeyState(int vKey);
 
         const int VK_E = 0x45, VK_U = 0x55, VK_N = 0x4E, VK_Z = 0x5A, VK_W = 0x57, VK_SHIFT = 0x10, VK_CTRL = 0x11;
-        const int VK_F9 = 0x78, VK_F8 = 0x77;
+        const int VK_F9 = 0x78, VK_F8 = 0x77, VK_F7 = 0x76;
         const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_ENTER = 0x0D, VK_BACK = 0x08;
         const string ArchivoIni = "scripts\\VidaNiko.ini";
         const string ArchivoEstado = "scripts\\VidaNikoEstado.txt";
@@ -412,6 +412,67 @@ namespace VidaNikoMod
         void Aviso(string s) { aviso = s; avisoHasta = Game.GameTime + 4500; }
         int PlayerId() { try { return Function.Call<int>("GET_PLAYER_ID"); } catch { return 0; } }
         bool EnMision() { try { return Function.Call<bool>("GET_MISSION_FLAG"); } catch { return false; } }
+        // ---- computadora del cibercafe (Ctrl+F7) ----
+        // Las computadoras del juego son objetos (BM_monitor4, BM_monitor6, BM_laptop) que arrancan el script
+        // computerStreamed al acercarte. Con muchos autos agregados a veces no aparecen: aca se pone una.
+        static readonly string[] ModelosPc = { "BM_monitor4", "BM_monitor6", "BM_laptop" };
+        GTA.Object pcPuesta;
+
+        int Instancias(string script)
+        {
+            try { return Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", script); } catch { return -1; }
+        }
+
+        void Computadora(Ped me, bool forzar)
+        {
+            Vector3 p = me.Position;
+            string hay = "";
+            foreach (string m in ModelosPc)
+            {
+                try { if (Function.Call<bool>("DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS", p.X, p.Y, p.Z, 3.0f, new Model(m).Hash)) hay = m; } catch { }
+            }
+            int cs = Instancias("computerStreamed"), cm = Instancias("computerMain");
+            if (forzar)
+            {
+                // abrir el escritorio directo (como lo hace el juego: 1 argumento, pila 1024)
+                try
+                {
+                    Function.Call("REQUEST_SCRIPT", "computerMain");
+                    int limite = Game.GameTime + 3000;
+                    while (!Function.Call<bool>("HAS_SCRIPT_LOADED", "computerMain") && Game.GameTime < limite) Wait(0);
+                    if (!Function.Call<bool>("HAS_SCRIPT_LOADED", "computerMain")) { Aviso("No se pudo cargar la computadora"); return; }
+                    Pointer arg = new Pointer(typeof(int));
+                    arg.Value = 0;
+                    Function.Call<int>("START_NEW_SCRIPT_WITH_ARGS", "computerMain", arg, 1, 1024);
+                    Function.Call("MARK_SCRIPT_AS_NO_LONGER_NEEDED", "computerMain");
+                    Aviso("Abriendo la computadora...");
+                }
+                catch { Aviso("No se pudo abrir la computadora"); }
+                return;
+            }
+            if (hay.Length == 0)
+            {
+                try
+                {
+                    Model m = new Model("BM_monitor4");
+                    Function.Call("REQUEST_MODEL", m.Hash);
+                    int limite = Game.GameTime + 3000;
+                    while (!Function.Call<bool>("HAS_MODEL_LOADED", m.Hash) && Game.GameTime < limite) Wait(0);
+                    if (pcPuesta != null && Game.Exists(pcPuesta)) pcPuesta.Delete();
+                    pcPuesta = World.CreateObject(m, me.GetOffsetPosition(new Vector3(0f, 0.8f, 0.1f)));
+                    if (pcPuesta != null && Game.Exists(pcPuesta))
+                    {
+                        pcPuesta.Heading = me.Heading + 180f;
+                        pcPuesta.FreezePosition = true;
+                        Aviso("No habia computadora: puse una adelante tuyo. Apreta E (la del juego). Si no aparece: Ctrl+Shift+F7");
+                    }
+                    else Aviso("No se pudo poner la computadora. Proba Ctrl+Shift+F7");
+                }
+                catch { Aviso("No se pudo poner la computadora. Proba Ctrl+Shift+F7"); }
+            }
+            else Aviso("Computadora " + hay + " cerca. Script del juego: " + (cs > 0 ? "activo" : "apagado") + (cm > 0 ? " (abierta)" : "") + ". Si no te deja usarla: Ctrl+Shift+F7");
+        }
+
         bool EnCinematica()
         {
             try
@@ -1035,7 +1096,7 @@ namespace VidaNikoMod
             int nTipo = 0;                                     // 1 tocar, 2 mantener
             if (nDown && nDesde > 0 && now - nDesde > 450) { nTipo = 2; nDesde = 0; }
             else if (nRel && nDesde > 0) { nTipo = 1; nDesde = 0; }
-            bool f9 = Pressed(VK_F9), f8 = Pressed(VK_F8);
+            bool f9 = Pressed(VK_F9), f8 = Pressed(VK_F8), f7 = Pressed(VK_F7);
             bool uDown = Down(VK_U);
             bool uPress = uDown && !prev[VK_U], uRelease = !uDown && prev[VK_U];
             prev[VK_U] = uDown;
@@ -1074,6 +1135,7 @@ namespace VidaNikoMod
             }
 
             if (ctrl && f9 && aPie) { Registrar(me, "FARMACIA"); return; }
+            if (ctrl && f7 && aPie) { Computadora(me, shift); return; }
             if (ctrl && f8 && aPie && !regMenu) { regMenu = true; regSel = 0; Control(false); return; }
             if (regMenu)
             {
