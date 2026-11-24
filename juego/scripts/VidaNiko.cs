@@ -12,7 +12,7 @@
 //   U rapido = usa la curacion que mas sirve. Mantener U = rueda de objetos:
 //   mouse (o flechas) hacia el objeto y solta U. Sentado, comes y tomas sentado.
 //
-// TIENDAS (B para comprar)
+// TIENDAS (E para comprar; en farmacias, restaurantes y almacenes se le habla al empleado)
 //   Farmacias: curaciones + agua.   Estaciones de servicio: de todo.
 //   Restaurantes y bares: comida y bebida.   Almacenes (24/7, deli): bebidas, snacks y cigarrillos.
 //   Ctrl+F8 abre un menu para registrar el lugar donde estes (scripts\Lugares.ini).
@@ -45,7 +45,7 @@ namespace VidaNikoMod
         [DllImport("user32.dll")]
         static extern short GetAsyncKeyState(int vKey);
 
-        const int VK_B = 0x42, VK_U = 0x55, VK_N = 0x4E, VK_Z = 0x5A, VK_W = 0x57, VK_SHIFT = 0x10, VK_CTRL = 0x11;
+        const int VK_E = 0x45, VK_U = 0x55, VK_N = 0x4E, VK_Z = 0x5A, VK_W = 0x57, VK_SHIFT = 0x10, VK_CTRL = 0x11;
         const int VK_F9 = 0x78, VK_F8 = 0x77;
         const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_ENTER = 0x0D, VK_BACK = 0x08;
         const string ArchivoIni = "scripts\\VidaNiko.ini";
@@ -107,6 +107,8 @@ namespace VidaNikoMod
         // objeto en la mano y cigarrillo
         GTA.Object prop; int ptfx = -1; int fumarFase, fumarHasta, proximaPitada;
         bool humo = true;
+        // hablar con el empleado antes de comprar: 1 Niko saluda, 2 el empleado responde
+        Ped empleado; int saludoFase, saludoHasta;
         // guantera de tu auto (MisAutos avisa en cual estas)
         const int MaxGuantera = 3;
         string miAuto = "";
@@ -339,7 +341,7 @@ namespace VidaNikoMod
                     p.X.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Y.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Z.ToString("0.00", CultureInfo.InvariantCulture) + " | 15\r\n");
-                Aviso(NombreTipo(tipo) + " registrado aca: ya podes comprar con B");
+                Aviso(NombreTipo(tipo) + " registrado aca: habla con el empleado (E) para comprar");
             }
             catch { Aviso("No se pudo registrar el lugar"); }
         }
@@ -447,6 +449,33 @@ namespace VidaNikoMod
             prop = null;
         }
 
+        // la persona mas cerca adelante de Niko (el que atiende detras del mostrador)
+        Ped BuscarEmpleado(Ped me)
+        {
+            Ped mejor = null; float mejorD = 99f;
+            try
+            {
+                double h = me.Heading * Math.PI / 180.0;
+                float fx = -(float)Math.Sin(h), fy = (float)Math.Cos(h);
+                foreach (Ped p in World.GetPeds(me.Position, 4.5f))
+                {
+                    if (!Game.Exists(p) || p.Equals(me) || !p.isAliveAndWell || p.isInVehicle()) continue;
+                    Vector3 d = p.Position - me.Position;
+                    float dist = (float)Math.Sqrt(d.X * d.X + d.Y * d.Y);
+                    if (dist < 0.3f || dist > 4.5f) continue;
+                    if ((d.X * fx + d.Y * fy) / dist < 0.55f) continue;     // tiene que estar adelante (unos 55 grados)
+                    if (dist < mejorD) { mejorD = dist; mejor = p; }
+                }
+            }
+            catch { }
+            return mejor;
+        }
+
+        void Hablar(Ped p, string frase)
+        {
+            try { Function.Call("SAY_AMBIENT_SPEECH", p, frase, 1, 1, 0); } catch { }
+        }
+
         void Caminar(Ped me, bool heridoAhora)
         {
             if (heridoAhora == herido) return;
@@ -475,12 +504,12 @@ namespace VidaNikoMod
 
         void Reiniciar()
         {
-            bool habiaMenu = tienda || rueda || sentado != 0 || regMenu || guantera;
+            bool habiaMenu = tienda || rueda || sentado != 0 || regMenu || guantera || saludoFase != 0;
             if (rueda) Lento(false);
             if (habiaMenu) Control(true);
             if (accion == 3) Fundido(false);
             QuitarProp(); fumarFase = 0; regMenu = false;
-            guantera = false;
+            guantera = false; saludoFase = 0; empleado = null;
             rueda = false; tienda = false; sentado = 0; accion = 0; jeringaHasta = 0;
         }
 
@@ -591,7 +620,7 @@ namespace VidaNikoMod
 
         void Usar(Ped me, int i, int vida, int now)
         {
-            if (i < 0) { Aviso("No tenes nada para curarte (compra con B en farmacias o estaciones)"); return; }
+            if (i < 0) { Aviso("No tenes nada para curarte (compra en farmacias o estaciones)"); return; }
             Obj o = objs[i];
             if (o.Tengo <= 0) { Aviso("No tenes " + o.Nombre.ToLowerInvariant()); return; }
             if (o.Tipo == 0 && vida >= vidaMax && !(i == GASA && sangrando)) { Aviso("No estas herido"); return; }
@@ -762,7 +791,7 @@ namespace VidaNikoMod
         {
             bool shift = Down(VK_SHIFT), ctrl = Down(VK_CTRL), mision = EnMision();
             bool aPie = !me.isInVehicle() && me.isAliveAndWell;
-            bool b = Pressed(VK_B) && !shift, z = Pressed(VK_Z) && !shift;
+            bool e = Pressed(VK_E) && !shift, z = Pressed(VK_Z) && !shift;
             bool nDown = Down(VK_N) && !shift, nRel = !nDown && prev[VK_N];
             if (nDown && !prev[VK_N]) nDesde = now;
             prev[VK_N] = nDown;
@@ -812,6 +841,28 @@ namespace VidaNikoMod
                 return;
             }
 
+            // ---- saludo con el empleado ----
+            if (saludoFase != 0)
+            {
+                bool sigue = false;
+                try { sigue = empleado != null && Game.Exists(empleado) && empleado.isAliveAndWell && empleado.Position.DistanceTo(me.Position) < 6f; } catch { }
+                if (!sigue) { saludoFase = 0; empleado = null; Control(true); Aviso("Se fue el empleado"); return; }
+                if (now >= saludoHasta)
+                {
+                    if (saludoFase == 1)
+                    {
+                        saludoFase = 2; saludoHasta = now + 1300;
+                        Hablar(empleado, "GENERIC_HI");
+                    }
+                    else
+                    {
+                        saludoFase = 0;
+                        tienda = true; tiendaSel = 0;          // el control sigue bloqueado por la tienda
+                    }
+                }
+                return;
+            }
+
             // ---- tienda ----
             if (tienda)
             {
@@ -825,7 +876,7 @@ namespace VidaNikoMod
                     else if (Player.Money < o.Precio) Aviso("No te alcanza ($" + o.Precio + ")");
                     else { Player.Money = Player.Money - o.Precio; o.Tengo += o.Pack; Aviso("Compraste: " + o.Nombre + " (" + o.Tengo + "/" + o.Max + ")"); }
                 }
-                if (b || Pressed(VK_BACK)) { tienda = false; Control(true); }
+                if (e || Pressed(VK_BACK)) { tienda = false; Control(true); }
                 return;
             }
 
@@ -885,11 +936,24 @@ namespace VidaNikoMod
             }
 
             // ---- tienda cercana ----
+            // estaciones: autoservicio. Farmacias, restaurantes y almacenes: hay que hablar con el empleado (E)
             Lugar t = TiendaCerca(me.Position);
-            if (t != null && b)
+            Ped emp = null;
+            if (t != null && t.Tipo != "ESTACION") emp = BuscarEmpleado(me);
+            if (t != null && e)
             {
                 tiendaObjs = ObjsDeTienda(t);
-                if (tiendaObjs.Count > 0) { tienda = true; tiendaSel = 0; tiendaLugar = t; Control(false); return; }
+                if (tiendaObjs.Count > 0)
+                {
+                    if (t.Tipo == "ESTACION") { tienda = true; tiendaSel = 0; tiendaLugar = t; Control(false); return; }
+                    if (emp == null) { Aviso("No hay nadie atendiendo"); return; }
+                    empleado = emp; tiendaLugar = t; saludoFase = 1; saludoHasta = now + 1300;
+                    Control(false);
+                    try { Function.Call("TASK_TURN_CHAR_TO_FACE_CHAR", me, emp); } catch { }
+                    try { Function.Call("TASK_TURN_CHAR_TO_FACE_CHAR", emp, me); } catch { }
+                    Hablar(me, "GENERIC_HI");
+                    return;
+                }
             }
 
             // ---- bano (bonus) ----
@@ -930,7 +994,11 @@ namespace VidaNikoMod
                 }
             }
 
-            if (t != null && !sangrando) Ayuda("Apreta B para comprar en " + t.Nombre + ".");
+            if (t != null && !sangrando)
+            {
+                if (t.Tipo == "ESTACION") Ayuda("Apreta E para comprar en " + t.Nombre + ".");
+                else if (emp != null) Ayuda("Apreta E para hablar con el empleado.");
+            }
         }
 
         // ================= dibujo (estilo GTA IV, ver clase IV) =================
@@ -982,7 +1050,7 @@ namespace VidaNikoMod
                 y += IV.Fila;
             }
             Obj sel = objs[tiendaObjs[tiendaSel]];
-            IV.Pie(sel.Desc + "     Enter: comprar   B: salir", x, y, w);
+            IV.Pie(sel.Desc + "     Enter: comprar   E: salir", x, y, w);
         }
 
         void DibujarRegistro()

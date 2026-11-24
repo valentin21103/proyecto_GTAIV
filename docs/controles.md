@@ -16,7 +16,8 @@
 | `U` (mantener) | Rueda de objetos (curaciones, comida, bebida, cigarrillos): mouse o flechas y soltar | VidaNiko |
 | `U` (en tu auto, parado) | Guantera: hasta 3 bebidas; Enter tomar / guardar, Retroceso sacar | VidaNiko + MisAutos |
 | `U` o caminar (fumando) | Tirar el cigarrillo | VidaNiko |
-| `B` (farmacia, restaurante, almacén o estación) | Tienda: farmacia = curaciones + agua; restaurante = comida y bebida; almacén = bebidas, snacks y cigarrillos; estación = todo | VidaNiko |
+| `E` (mirando al empleado) | Hablar con el empleado y comprar: farmacia = curaciones + agua; restaurante = comida y bebida; almacén = bebidas, snacks y cigarrillos | VidaNiko |
+| `E` (estación de servicio) | Tienda de autoservicio: de todo | VidaNiko |
 | `Ctrl+F8` | Menú para registrar el lugar actual como farmacia, restaurante o almacén (`scripts/Lugares.ini`) | VidaNiko |
 | `Ctrl+F9` | Registrar farmacia directo | VidaNiko |
 | `Z` | Sentarse (de espaldas al banco); `Z` o `W` para pararse. Sentado comés y tomás sentado | VidaNiko |
