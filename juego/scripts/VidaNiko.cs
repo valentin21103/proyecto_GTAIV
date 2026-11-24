@@ -6,14 +6,16 @@
 //
 // OBJETOS (se llevan encima, se usan desde la rueda)
 //   Gasa (frena la sangre, cura todo) - Analgesico (cura la mitad) - Jeringa (cura de a poco)
-//   Hamburguesa, Chocolate (hambre) - Agua, Gaseosa, Cerveza (sed)
+//   Hamburguesa, Pancho, Chocolate (hambre) - Agua, Gaseosa, Cerveza (sed) - Cigarrillos
+//   Niko tiene el objeto del juego en la mano (posiciones en scripts\Props.ini).
+//   Cigarrillos: lo saca, lo prende y fuma; U o caminar para tirarlo. Calma el hambre y cura un poco.
 //   U rapido = usa la curacion que mas sirve. Mantener U = rueda de objetos:
 //   mouse (o flechas) hacia el objeto y solta U. Sentado, comes y tomas sentado.
 //
 // TIENDAS (B para comprar)
 //   Farmacias: curaciones + agua.   Estaciones de servicio: de todo.
-//   Restaurantes y bares: comida y bebida.
-//   Ctrl+F9 registra una farmacia donde estes, Ctrl+F8 un restaurante (scripts\Lugares.ini).
+//   Restaurantes y bares: comida y bebida.   Almacenes (24/7, deli): bebidas, snacks y cigarrillos.
+//   Ctrl+F8 abre un menu para registrar el lugar donde estes (scripts\Lugares.ini).
 //
 // SENTARSE
 //   Z = sentarse (ponete de espaldas al banco, silla o escalon). Z o W para pararte.
@@ -53,11 +55,12 @@ namespace VidaNikoMod
         const string ArchivoFarmaciasViejo = "scripts\\Farmacias.ini";
 
         // ================= objetos =================
-        // tipo: 0 curacion, 1 comida, 2 bebida
+        // tipo: 0 curacion, 1 comida, 2 bebida, 3 cigarrillos
         class Obj
         {
             public string Nombre, Desc, Set, Clip, SetSentado, ClipSentado;
-            public int Tipo, Precio, Max, Ms, Tengo;
+            public int Tipo, Precio, Max, Ms, Tengo, Pack = 1;
+            public string Prop;
             public float Hambre, Sed, Vejiga;
             public Obj(string n, string d, int tipo, int precio, int max, int ms, float hambre, float sed, float vejiga, string set, string clip, string setS, string clipS)
             { Nombre = n; Desc = d; Tipo = tipo; Precio = precio; Max = max; Ms = ms; Hambre = hambre; Sed = sed; Vejiga = vejiga; Set = set; Clip = clip; SetSentado = setS; ClipSentado = clipS; }
@@ -68,10 +71,12 @@ namespace VidaNikoMod
             new Obj("Analgesico", "cura la mitad", 0, 40, 3, 1200, 0, 0, 0, "amb@beg_standing", "take_obj", null, null),
             new Obj("Jeringa", "cura de a poco", 0, 150, 2, 1200, 0, 0, 0, "amb@beg_standing", "take_obj", null, null),
             new Obj("Hamburguesa", "hambre +50", 1, 8, 3, 6000, 50, 0, 0, "amb@burger_idle", "eat_stand", "amb@cafe_eat_idles", "sit_eat"),
+            new Obj("Pancho", "hambre +30", 1, 4, 3, 5000, 30, 0, 0, "amb@hotdog_idle", "eat_stand", "amb@cafe_eat_idles", "sit_eat"),
             new Obj("Chocolate", "hambre +15", 1, 3, 5, 4000, 15, 0, 0, "amb@eat_chocolate", "choc_stand", "amb@cafe_eat_idles", "sit_eat"),
             new Obj("Agua", "sed +50", 2, 2, 3, 4000, 0, 50, 12, "amb@drink_bottle", "bottle_stand", "amb@bnch_eat_idl", "sit_idle_a"),
             new Obj("Gaseosa", "sed +40", 2, 3, 3, 4000, 0, 40, 15, "amb@drink_can", "can_stand", "amb@bnch_eat_idl", "sit_idle_a"),
             new Obj("Cerveza", "sed +25", 2, 5, 3, 4000, 0, 25, 22, "amb@drink_bottle", "bottle_stand", "amb@bnch_eat_idl", "sit_idle_a"),
+            new Obj("Cigarrillos", "atado de 20, calma el hambre", 3, 6, 40, 0, 0, 0, 0, "amb@smoking_create", "stand_create", null, null),
         };
 
         // ---- opciones ----
@@ -95,6 +100,18 @@ namespace VidaNikoMod
         int sentado, sentadoFase;
         // tienda
         bool tienda; int tiendaSel; Lugar tiendaLugar; List<int> tiendaObjs = new List<int>();
+        // menu para registrar lugares
+        bool regMenu; int regSel;
+        static readonly string[] TiposLugar = { "FARMACIA", "RESTAURANTE", "ALMACEN" };
+        static readonly string[] DescLugar = { "curaciones y agua", "comida y bebida", "bebidas, snacks y cigarrillos" };
+        // objeto en la mano y cigarrillo
+        GTA.Object prop; int ptfx = -1; int fumarFase, fumarHasta, proximaPitada;
+        bool humo = true;
+        // guantera de tu auto (MisAutos avisa en cual estas)
+        const int MaxGuantera = 3;
+        string miAuto = "";
+        Dictionary<string, int[]> guanteras = new Dictionary<string, int[]>();
+        bool guantera; int guanteraLado, guanteraSel;
         // rueda
         bool rueda; int ruedaSel = -1; int uDesde; float ruedaX, ruedaY;
 
@@ -105,7 +122,19 @@ namespace VidaNikoMod
         public VidaNiko()
         {
             this.Interval = 0;
+            this.GUID = new Guid("3f6c2b8e-7a41-4d2e-9b51-0c4e8a1d7f22");
+            BindScriptCommand("miauto", new ScriptCommandDelegate(CmdMiAuto));
             objs[GASA].Tengo = 1; objs[ANALGESICO].Tengo = 1;
+            foreach (Obj o in objs)
+            {
+                if (o.Nombre == "Hamburguesa") o.Prop = "AMB_BURG";
+                else if (o.Nombre == "Pancho") o.Prop = "AMB_HOTDOG";
+                else if (o.Nombre == "Chocolate") o.Prop = "AMB_CHOCBAR";
+                else if (o.Nombre == "Agua") o.Prop = "AMB_JUICE_BOT";
+                else if (o.Nombre == "Gaseosa") o.Prop = "AMB_CAN_DRINK_1";
+                else if (o.Nombre == "Cerveza") o.Prop = "AMB_WINE";
+                else if (o.Nombre == "Cigarrillos") { o.Prop = "BM_CHAR_FAG"; o.Pack = 20; }
+            }
             CargarIni();
             CargarEstado();
             CargarLugares();
@@ -142,6 +171,8 @@ namespace VidaNikoMod
                         "MinutosHambre = 90",
                         "MinutosSed = 60",
                         "MinutosVejiga = 75",
+                        "; humo del cigarrillo (0 si el juego se cierra al fumar)",
+                        "Humo = 1",
                     });
                     return;
                 }
@@ -162,6 +193,7 @@ namespace VidaNikoMod
                     else if (k == "minutoshambre") minutosHambre = Math.Max(5f, v);
                     else if (k == "minutossed") minutosSed = Math.Max(5f, v);
                     else if (k == "minutosvejiga") minutosVejiga = Math.Max(5f, v);
+                    else if (k == "humo") humo = v != 0;
                 }
             }
             catch { }
@@ -176,7 +208,9 @@ namespace VidaNikoMod
                 {
                     int i = l.IndexOf('=');
                     if (i < 0) continue;
-                    string k = l.Substring(0, i); float v = F(l.Substring(i + 1), -1f);
+                    string k = l.Substring(0, i);
+                    if (k.StartsWith("Guantera|")) { LeerGuantera(k.Substring(9), l.Substring(i + 1)); continue; }
+                    float v = F(l.Substring(i + 1), -1f);
                     if (v < 0) continue;
                     if (k == "Hambre") hambre = v;
                     else if (k == "Sed") sed = v;
@@ -198,9 +232,38 @@ namespace VidaNikoMod
                 l.Add("Vejiga=" + vejiga.ToString("0.0", CultureInfo.InvariantCulture));
                 l.Add("Intestino=" + intestino.ToString("0.0", CultureInfo.InvariantCulture));
                 foreach (Obj o in objs) l.Add(o.Nombre + "=" + o.Tengo);
+                foreach (KeyValuePair<string, int[]> g in guanteras)
+                {
+                    List<string> c = new List<string>();
+                    for (int i = 0; i < objs.Length; i++) if (g.Value[i] > 0) c.Add(objs[i].Nombre + ":" + g.Value[i]);
+                    if (c.Count > 0) l.Add("Guantera|" + g.Key + "=" + string.Join(",", c.ToArray()));
+                }
                 File.WriteAllLines(ArchivoEstado, l.ToArray());
             }
             catch { }
+        }
+
+        void LeerGuantera(string auto, string datos)
+        {
+            int[] g = Guantera(auto);
+            foreach (string par in datos.Split(','))
+            {
+                string[] kv = par.Split(':');
+                if (kv.Length != 2) continue;
+                for (int i = 0; i < objs.Length; i++) if (objs[i].Nombre == kv[0].Trim()) g[i] = (int)F(kv[1], 0);
+            }
+        }
+
+        int[] Guantera(string auto)
+        {
+            int[] g;
+            if (!guanteras.TryGetValue(auto, out g)) { g = new int[objs.Length]; guanteras[auto] = g; }
+            return g;
+        }
+
+        void CmdMiAuto(Script sender, ObjectCollection p)
+        {
+            try { miAuto = p.Count > 0 && p[0] != null ? p[0].ToString() : ""; } catch { miAuto = ""; }
         }
 
         void CargarLugares()
@@ -213,7 +276,8 @@ namespace VidaNikoMod
                     l.Add("; Lugares donde se compra con B.");
                     l.Add("; FARMACIA = nombre | x, y, z | radio      (curaciones y agua)");
                     l.Add("; RESTAURANTE = nombre | x, y, z | radio   (comida y bebida)");
-                    l.Add("; En el juego: Ctrl+F9 agrega una farmacia y Ctrl+F8 un restaurante donde estes parado.");
+                    l.Add("; ALMACEN = nombre | x, y, z | radio       (24/7, deli, licoreria: bebidas, snacks, cigarrillos)");
+                    l.Add("; En el juego: Ctrl+F8 abre un menu para registrar el lugar donde estes parado.");
                     l.Add("FARMACIA = Pill-Pharm East Island City | 1299.0, 690.0, 36.0 | 45");
                     // pasar las farmacias registradas con la version anterior (Farmacias.ini)
                     if (File.Exists(ArchivoFarmaciasViejo))
@@ -223,6 +287,7 @@ namespace VidaNikoMod
                 }
                 LeerLugares(ArchivoLugares, "FARMACIA", true);
                 LeerLugares(ArchivoLugares, "RESTAURANTE", true);
+                LeerLugares(ArchivoLugares, "ALMACEN", true);
                 LeerLugares(ArchivoNafta, "ESTACION", false);
             }
             catch { }
@@ -251,7 +316,12 @@ namespace VidaNikoMod
 
         void PonerBlip(Lugar g)
         {
-            try { g.B = Blip.AddBlip(g.Pos); g.B.Name = g.Tipo == "FARMACIA" ? "Farmacia" : "Restaurante"; g.B.ShowOnlyWhenNear = false; } catch { }
+            try { g.B = Blip.AddBlip(g.Pos); g.B.Name = NombreTipo(g.Tipo); g.B.ShowOnlyWhenNear = false; } catch { }
+        }
+
+        static string NombreTipo(string tipo)
+        {
+            return tipo == "FARMACIA" ? "Farmacia" : tipo == "ALMACEN" ? "Almacen" : "Restaurante";
         }
 
         void Registrar(Ped me, string tipo)
@@ -261,7 +331,7 @@ namespace VidaNikoMod
                 Vector3 p = me.Position;
                 Lugar g = new Lugar();
                 g.Tipo = tipo;
-                g.Nombre = (tipo == "FARMACIA" ? "Farmacia " : "Restaurante ") + (lugares.Count + 1);
+                g.Nombre = NombreTipo(tipo) + " " + (lugares.Count + 1);
                 g.Pos = p; g.Radio = 15f;
                 PonerBlip(g);
                 lugares.Add(g);
@@ -269,7 +339,7 @@ namespace VidaNikoMod
                     p.X.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Y.ToString("0.00", CultureInfo.InvariantCulture) + ", " +
                     p.Z.ToString("0.00", CultureInfo.InvariantCulture) + " | 15\r\n");
-                Aviso((tipo == "FARMACIA" ? "Farmacia" : "Restaurante") + " registrado aca (ya podes comprar con B)");
+                Aviso(NombreTipo(tipo) + " registrado aca: ya podes comprar con B");
             }
             catch { Aviso("No se pudo registrar el lugar"); }
         }
@@ -288,7 +358,8 @@ namespace VidaNikoMod
                 Obj o = objs[i];
                 if (g.Tipo == "ESTACION") r.Add(i);
                 else if (g.Tipo == "FARMACIA" && (o.Tipo == 0 || o.Nombre == "Agua")) r.Add(i);
-                else if (g.Tipo == "RESTAURANTE" && o.Tipo != 0) r.Add(i);
+                else if (g.Tipo == "RESTAURANTE" && (o.Tipo == 1 || o.Tipo == 2)) r.Add(i);
+                else if (g.Tipo == "ALMACEN" && (o.Tipo != 0 || i == ANALGESICO) && o.Nombre != "Hamburguesa") r.Add(i);
             }
             return r;
         }
@@ -320,6 +391,62 @@ namespace VidaNikoMod
             catch { }
         }
 
+        // ---- objetos en la mano (modelos del propio juego, posicion en scripts\Props.ini) ----
+        const string ArchivoProps = "scripts\\Props.ini";
+        static readonly string[] PropsDefecto = {
+            "; Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
+            "; Se relee cada vez que usas un objeto: podes ajustar con el juego abierto.",
+            "BM_CHAR_FAG = 0.02, 0.01, 0.00 | 0, 0, 0",
+            "AMB_BURG = 0.08, 0.02, -0.02 | 0, 0, 0",
+            "AMB_HOTDOG = 0.08, 0.02, -0.02 | 0, 0, 0",
+            "AMB_CHOCBAR = 0.07, 0.02, -0.02 | 0, 0, 0",
+            "AMB_JUICE_BOT = 0.07, 0.03, -0.05 | 0, 0, 0",
+            "AMB_CAN_DRINK_1 = 0.07, 0.03, -0.03 | 0, 0, 0",
+            "AMB_WINE = 0.07, 0.03, -0.05 | 0, 0, 0",
+        };
+
+        void LeerProp(string modelo, out Vector3 pos, out Vector3 rot)
+        {
+            pos = new Vector3(0.07f, 0.02f, -0.02f); rot = new Vector3(0f, 0f, 0f);
+            try
+            {
+                if (!File.Exists(ArchivoProps)) File.WriteAllLines(ArchivoProps, PropsDefecto);
+                foreach (string raw in File.ReadAllLines(ArchivoProps))
+                {
+                    string l = raw.Trim();
+                    if (l.StartsWith(";") || l.IndexOf('=') < 0) continue;
+                    if (l.Substring(0, l.IndexOf('=')).Trim().ToUpperInvariant() != modelo) continue;
+                    string[] p = l.Substring(l.IndexOf('=') + 1).Split('|');
+                    string[] a = p[0].Split(',');
+                    if (a.Length >= 3) pos = new Vector3(F(a[0], 0), F(a[1], 0), F(a[2], 0));
+                    if (p.Length > 1) { string[] b = p[1].Split(','); if (b.Length >= 3) rot = new Vector3(F(b[0], 0), F(b[1], 0), F(b[2], 0)); }
+                }
+            }
+            catch { }
+        }
+
+        void PonerProp(Ped me, string modelo)
+        {
+            QuitarProp();
+            if (modelo == null) return;
+            try
+            {
+                Vector3 pos, rot;
+                LeerProp(modelo, out pos, out rot);
+                prop = World.CreateObject(new Model(modelo), me.Position + new Vector3(0f, 0f, -5f));
+                if (prop != null && Game.Exists(prop)) prop.AttachToPed(me, Bone.RightHand, pos, rot);
+            }
+            catch { prop = null; }
+        }
+
+        void QuitarProp()
+        {
+            if (ptfx >= 0) { try { Function.Call("STOP_PTFX", ptfx); } catch { } ptfx = -1; }
+            if (prop == null) return;
+            try { if (Game.Exists(prop)) { prop.Detach(); prop.Delete(); } } catch { }
+            prop = null;
+        }
+
         void Caminar(Ped me, bool heridoAhora)
         {
             if (heridoAhora == herido) return;
@@ -348,10 +475,12 @@ namespace VidaNikoMod
 
         void Reiniciar()
         {
-            bool habiaMenu = tienda || rueda || sentado != 0;
+            bool habiaMenu = tienda || rueda || sentado != 0 || regMenu || guantera;
             if (rueda) Lento(false);
             if (habiaMenu) Control(true);
             if (accion == 3) Fundido(false);
+            QuitarProp(); fumarFase = 0; regMenu = false;
+            guantera = false;
             rueda = false; tienda = false; sentado = 0; accion = 0; jeringaHasta = 0;
         }
 
@@ -441,6 +570,8 @@ namespace VidaNikoMod
 
             DibujarHud(pct, critico);
             if (tienda) DibujarTienda();
+            if (regMenu) DibujarRegistro();
+            if (guantera) DibujarGuantera();
             if (rueda) DibujarRueda();
             if (now < avisoHasta && aviso != null) DibujarAviso();
 
@@ -464,16 +595,27 @@ namespace VidaNikoMod
             Obj o = objs[i];
             if (o.Tengo <= 0) { Aviso("No tenes " + o.Nombre.ToLowerInvariant()); return; }
             if (o.Tipo == 0 && vida >= vidaMax && !(i == GASA && sangrando)) { Aviso("No estas herido"); return; }
+            if (o.Tipo == 3)
+            {
+                if (sentado != 0) { Aviso("Parate para fumar"); return; }
+                o.Tengo--;
+                accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 4500; accionDur = 4500;
+                try { me.Task.ClearAllImmediately(); } catch { }
+                Anim(me, "amb@smoking_create", "stand_create", false);
+                PonerProp(me, o.Prop);
+                return;
+            }
             o.Tengo--;
             accion = 1; accionObj = i; accionFin = now + o.Ms; accionDur = o.Ms;
             if (sentado == 2)
             {
-                if (o.SetSentado != null) Anim(me, o.SetSentado, o.ClipSentado, true);
+                if (o.SetSentado != null) { Anim(me, o.SetSentado, o.ClipSentado, true); PonerProp(me, o.Prop); }
             }
             else if (sentado == 0)
             {
                 try { me.Task.ClearAllImmediately(); } catch { }
                 Anim(me, o.Set, o.Clip, o.Tipo != 0);
+                PonerProp(me, o.Prop);
             }
         }
 
@@ -505,6 +647,97 @@ namespace VidaNikoMod
                 if (o.Tipo == 1) intestino = Math.Min(100f, intestino + o.Hambre * 0.3f);
                 Aviso((o.Tipo == 1 ? "Comiste: " : "Tomaste: ") + o.Nombre.ToLowerInvariant() + "   (hambre " + (int)hambre + "%, sed " + (int)sed + "%)");
             }
+        }
+
+        // ================= guantera =================
+        // columna 0 = guantera (Enter tomar, Retroceso sacar), columna 1 = encima (Enter guardar)
+        void TickGuantera(Ped me, bool uPress)
+        {
+            if (!guantera)
+            {
+                if (!uPress) return;
+                float vel = 99f;
+                try { vel = me.CurrentVehicle.Speed; } catch { }
+                if (vel > 1f) { Aviso("Para el auto para abrir la guantera"); return; }
+                guantera = true; guanteraLado = 0; guanteraSel = 0; Control(false);
+                return;
+            }
+            List<int> lista = ListaGuantera(guanteraLado);
+            if (Pressed(VK_LEFT) || Pressed(VK_RIGHT)) { guanteraLado = 1 - guanteraLado; guanteraSel = 0; lista = ListaGuantera(guanteraLado); }
+            if (lista.Count > 0)
+            {
+                if (Pressed(VK_UP)) guanteraSel = (guanteraSel + lista.Count - 1) % lista.Count;
+                if (Pressed(VK_DOWN)) guanteraSel = (guanteraSel + 1) % lista.Count;
+                guanteraSel = Math.Min(guanteraSel, lista.Count - 1);
+            }
+            int[] g = Guantera(miAuto);
+            bool enter = Pressed(VK_ENTER), back = Pressed(VK_BACK);
+            if (lista.Count > 0 && (enter || back))
+            {
+                int i = lista[guanteraSel];
+                Obj o = objs[i];
+                if (guanteraLado == 0 && enter)
+                {
+                    g[i]--;
+                    float m = Bonus();
+                    sed = Math.Min(100f, sed + o.Sed * m); vejiga = Math.Min(100f, vejiga + o.Vejiga);
+                    Aviso("Tomaste " + o.Nombre.ToLowerInvariant() + " de la guantera (sed " + (int)sed + "%)");
+                }
+                else if (guanteraLado == 0 && back)
+                {
+                    if (o.Tengo >= o.Max) Aviso("Ya llevas el maximo de " + o.Nombre.ToLowerInvariant());
+                    else { g[i]--; o.Tengo++; Aviso("Sacaste " + o.Nombre.ToLowerInvariant() + " de la guantera"); }
+                }
+                else if (guanteraLado == 1 && enter)
+                {
+                    int total = 0; foreach (int c in g) total += c;
+                    if (total >= MaxGuantera) Aviso("La guantera esta llena (" + MaxGuantera + ")");
+                    else { o.Tengo--; g[i]++; Aviso("Guardaste " + o.Nombre.ToLowerInvariant() + " en la guantera"); }
+                }
+            }
+            if (uPress) { guantera = false; Control(true); }
+        }
+
+        // bebidas en la guantera (lado 0) o encima (lado 1)
+        List<int> ListaGuantera(int lado)
+        {
+            List<int> r = new List<int>();
+            int[] g = Guantera(miAuto);
+            for (int i = 0; i < objs.Length; i++)
+                if (objs[i].Tipo == 2 && (lado == 0 ? g[i] > 0 : objs[i].Tengo > 0)) r.Add(i);
+            return r;
+        }
+
+        // ================= fumar (estilo RDR) =================
+        // fase 1 lo saca y lo prende, 2 fuma (U o caminar para tirarlo), 3 lo tira
+        void TickFumar(Ped me, int now, int vida, bool aPie, bool uPress)
+        {
+            bool camina = Down(VK_W) || Down(0x41) || Down(0x53) || Down(0x44);
+            if (!aPie || (camina && fumarFase != 3)) { TerminarFumar(fumarFase >= 2); try { if (aPie) me.Task.ClearAll(); } catch { } return; }
+            if (fumarFase == 1 && now >= accionFin)
+            {
+                fumarFase = 2; fumarHasta = now + 22000; proximaPitada = now + 5000;
+                accionFin = fumarHasta; accionDur = 22000;
+                Anim(me, "amb@smoking", "stand_smoke", true);
+                if (humo && prop != null) { try { ptfx = Function.Call<int>("START_PTFX_ON_OBJ", "ambient_cig_smoke", prop, 0.04f, 0f, 0f, 0f, 0f, 0f, 1.0f); } catch { ptfx = -1; } }
+            }
+            else if (fumarFase == 2)
+            {
+                if (now >= proximaPitada) { proximaPitada = now + 5000; if (vida < vidaMax) SetVida(me, vida + 1); }
+                if (uPress || now >= fumarHasta)
+                {
+                    fumarFase = 3; accionFin = now + 2500; accionDur = 2500;
+                    Anim(me, "amb@smoking_destroy", "walk_destroy", false);
+                }
+            }
+            else if (fumarFase == 3 && now >= accionFin) { TerminarFumar(true); try { me.Task.ClearAll(); } catch { } }
+        }
+
+        void TerminarFumar(bool fumo)
+        {
+            QuitarProp();
+            if (fumo) { hambre = Math.Min(100f, hambre + 10f); Aviso("Fumaste un cigarrillo. Te quedan " + objs[accionObj].Tengo); }
+            fumarFase = 0; accion = 0;
         }
 
         // ================= sentarse =================
@@ -543,10 +776,17 @@ namespace VidaNikoMod
 
             if (!aPie && (sentado != 0 || tienda)) { Reiniciar(); return; }
 
+            // ---- guantera (adentro de tu auto) ----
+            bool enMiAuto = false;
+            try { enMiAuto = miAuto.Length > 0 && me.isInVehicle(); } catch { }
+            if (guantera && !enMiAuto) { guantera = false; Control(true); }
+            if (enMiAuto && accion == 0) { TickGuantera(me, uPress); return; }
+
             // accion en curso (comer, curarse, orinar)
+            if (accion == 5) { TickFumar(me, now, vida, aPie, uPress); return; }
             if (accion != 0)
             {
-                if (!aPie) { if (accion == 3) Fundido(false); accion = 0; return; }
+                if (!aPie) { if (accion == 3) Fundido(false); QuitarProp(); accion = 0; return; }
                 if (now >= accionFin)
                 {
                     if (accion == 1) TerminarUso(me, vida);
@@ -554,6 +794,7 @@ namespace VidaNikoMod
                     else if (accion == 3) { intestino = 0f; vejiga = Math.Max(0f, vejiga - 40f); DarBonus(1.5f, 15); Fundido(false); Aviso("Liberado. Hiciste lugar: la comida te llena mucho mas por 15 min"); }
                     bool gesto = accion == 4;
                     accion = 0;
+                    QuitarProp();
                     if (sentado == 0 && !gesto) { try { me.Task.ClearAll(); } catch { } }
                     else if (sentado == 2) Anim(me, "amb_sit_chair_m", "sit_down_idle_01", true);
                 }
@@ -561,7 +802,15 @@ namespace VidaNikoMod
             }
 
             if (ctrl && f9 && aPie) { Registrar(me, "FARMACIA"); return; }
-            if (ctrl && f8 && aPie) { Registrar(me, "RESTAURANTE"); return; }
+            if (ctrl && f8 && aPie && !regMenu) { regMenu = true; regSel = 0; Control(false); return; }
+            if (regMenu)
+            {
+                if (Pressed(VK_UP)) regSel = (regSel + TiposLugar.Length - 1) % TiposLugar.Length;
+                if (Pressed(VK_DOWN)) regSel = (regSel + 1) % TiposLugar.Length;
+                if (Pressed(VK_ENTER)) { Registrar(me, TiposLugar[regSel]); regMenu = false; Control(true); }
+                else if (Pressed(VK_BACK) || (ctrl && f8)) { regMenu = false; Control(true); }
+                return;
+            }
 
             // ---- tienda ----
             if (tienda)
@@ -572,9 +821,9 @@ namespace VidaNikoMod
                 if (Pressed(VK_ENTER))
                 {
                     Obj o = objs[tiendaObjs[tiendaSel]];
-                    if (o.Tengo >= o.Max) Aviso("Ya tenes " + o.Tengo + " (maximo " + o.Max + ")");
+                    if (o.Tengo + o.Pack > o.Max) Aviso("Ya tenes " + o.Tengo + " (maximo " + o.Max + ")");
                     else if (Player.Money < o.Precio) Aviso("No te alcanza ($" + o.Precio + ")");
-                    else { Player.Money = Player.Money - o.Precio; o.Tengo++; Aviso("Compraste: " + o.Nombre + " (" + o.Tengo + "/" + o.Max + ")"); }
+                    else { Player.Money = Player.Money - o.Precio; o.Tengo += o.Pack; Aviso("Compraste: " + o.Nombre + " (" + o.Tengo + "/" + o.Max + ")"); }
                 }
                 if (b || Pressed(VK_BACK)) { tienda = false; Control(true); }
                 return;
@@ -713,6 +962,7 @@ namespace VidaNikoMod
                 IV.Progreso(t, Avance(now));
             }
             if (accion == 2) IV.Progreso("Orinando", Avance(now));
+            if (accion == 5 && fumarFase == 2) Ayuda("Apreta U o camina para tirar el cigarrillo.");
             if (accion == 3) IV.Texto("Niko esta ocupado...", 0.5f, 0.47f, 0.42f, IV.BlancoPuro, 255, 1);
         }
 
@@ -735,9 +985,44 @@ namespace VidaNikoMod
             IV.Pie(sel.Desc + "     Enter: comprar   B: salir", x, y, w);
         }
 
+        void DibujarRegistro()
+        {
+            float x = 0.03f, y = 0.16f, w = 0.34f;
+            IV.Titulo("Registrar este lugar", x, y, w);
+            y += 0.045f;
+            for (int k = 0; k < TiposLugar.Length; k++) { IV.Item(NombreTipo(TiposLugar[k]), DescLugar[k], x, y, w, k == regSel, false, 0.12f); y += IV.Fila; }
+            IV.Pie("Enter: registrar   Retroceso: cancelar", x, y, w);
+        }
+
+        void DibujarGuantera()
+        {
+            int[] g = Guantera(miAuto);
+            int total = 0; foreach (int c in g) total += c;
+            float w = 0.24f, y0 = 0.16f;
+            int filas = 1;
+            for (int lado = 0; lado < 2; lado++)
+            {
+                List<int> l = ListaGuantera(lado);
+                float x = 0.03f + lado * (w + 0.01f);
+                IV.Titulo(lado == 0 ? "Guantera " + total + "/" + MaxGuantera : "Encima", x, y0, w);
+                if (lado == guanteraLado) IV.Rect(x, y0 + 0.042f, w, 0.003f, IV.BlancoPuro, 255);
+                float y = y0 + 0.045f;
+                if (l.Count == 0) { IV.Item(lado == 0 ? "(vacia)" : "(sin bebidas)", null, x, y, w, false, true, 0f); y += IV.Fila; }
+                for (int k = 0; k < l.Count; k++)
+                {
+                    int i = l[k];
+                    IV.Item(objs[i].Nombre, "x" + (lado == 0 ? g[i] : objs[i].Tengo), x, y, w, lado == guanteraLado && k == guanteraSel, false, 0.19f);
+                    y += IV.Fila;
+                }
+                filas = Math.Max(filas, Math.Max(1, l.Count));
+            }
+            IV.Pie(guanteraLado == 0 ? "Enter: tomar   Retroceso: sacar   Izq/Der: lado   U: cerrar" : "Enter: guardar   Izq/Der: lado   U: cerrar",
+                   0.03f, y0 + 0.045f + filas * IV.Fila, w * 2 + 0.01f);
+        }
+
         void DibujarRueda()
         {
-            float cx = 0.5f, cy = 0.48f, rx = 0.165f, ry = 0.25f;
+            float cx = 0.5f, cy = 0.48f, rx = 0.2f, ry = 0.3f;
             int n = objs.Length;
             for (int i = 0; i < n; i++)
             {
@@ -745,11 +1030,11 @@ namespace VidaNikoMod
                 float px = cx + (float)Math.Sin(ang) * rx, py = cy - (float)Math.Cos(ang) * ry;
                 Obj o = objs[i];
                 bool s = i == ruedaSel, hay = o.Tengo > 0;
-                IV.Rect(px - 0.05f, py - 0.034f, 0.1f, 0.068f, new int[] { 0, 0, 0 }, s ? 220 : 175);
-                if (s) IV.Rect(px - 0.05f, py - 0.034f, 0.1f, 0.068f, IV.Celeste, 220);
-                IV.Rect(px - 0.05f, py + 0.031f, 0.1f, 0.003f, hay ? IV.Celeste : IV.Atenuado, 255);
+                IV.Rect(px - 0.047f, py - 0.032f, 0.094f, 0.064f, new int[] { 0, 0, 0 }, s ? 220 : 175);
+                if (s) IV.Rect(px - 0.047f, py - 0.032f, 0.094f, 0.064f, IV.Celeste, 220);
+                IV.Rect(px - 0.047f, py + 0.029f, 0.094f, 0.003f, hay ? IV.Celeste : IV.Atenuado, 255);
                 int[] c = s ? IV.BlancoPuro : (hay ? IV.Blanco : IV.Atenuado);
-                IV.Texto(o.Nombre.ToUpperInvariant(), px, py - 0.026f, 0.25f, c, 255, 1);
+                IV.Texto(o.Nombre.ToUpperInvariant(), px, py - 0.026f, 0.23f, c, 255, 1);
                 IV.Texto("x" + o.Tengo, px, py + 0.0f, 0.27f, s ? IV.BlancoPuro : (hay ? IV.CelesteClaro : IV.Atenuado), 255, 1);
             }
             IV.Rect(cx - 0.085f, cy - 0.03f, 0.17f, 0.06f, new int[] { 0, 0, 0 }, 185);

@@ -76,6 +76,9 @@ namespace MisAutosMod
 
         Vehicle activo;
         int activoIdx = -1;
+        // VidaNiko usa esto para la guantera
+        static readonly Guid VidaNikoGuid = new Guid("3f6c2b8e-7a41-4d2e-9b51-0c4e8a1d7f22");
+        string miAutoEnviado = "";
         Blip blip;
         Vector3 blipPos;
         string nombreActivo;
@@ -437,6 +440,14 @@ namespace MisAutosMod
                     else if (blip == null || activo.Position.DistanceTo(blipPos) > 5f) PonerBlip();
                 }
                 catch { }
+            }
+
+            // avisar a VidaNiko si estas adentro de tu auto (guantera)
+            string miAuto = "";
+            try { if (activo != null && activoIdx >= 0 && activoIdx < autos.Count && me.isInVehicle() && me.CurrentVehicle.Equals(activo)) miAuto = autos[activoIdx].Nombre; } catch { }
+            if (miAuto != miAutoEnviado)
+            {
+                try { SendScriptCommand(VidaNikoGuid, "miauto", miAuto); miAutoEnviado = miAuto; } catch { }
             }
 
             if (baul) { TickBaul(me, now); DibujarBaul(); }
