@@ -19,8 +19,11 @@
 //   Z = sentarse (ponete de espaldas al banco, silla o escalon). Z o W para pararte.
 //
 // NECESIDADES
-//   Hambre y sed bajan con el tiempo; la vejiga se llena. Comer o tomar en los puestos,
-//   maquinas y locales del juego tambien las llena. N = orinar (si te ve la policia, 1 estrella).
+//   Hambre y sed bajan con el tiempo; vejiga e intestino se llenan. Comer o tomar en los
+//   puestos, maquinas y locales del juego tambien cuenta. Con hambre o sed Niko lo demuestra
+//   (jadea, bosteza) cuando esta quieto.
+//   BANO (bonus, sin castigo): N = orinar, mantener N = ir de cuerpo. Despues "hiciste lugar":
+//   la comida y bebida te llenan mas por un rato (x1.25 orinando, x1.5 de cuerpo).
 //   Nada de esto te hace perder vida durante las misiones.
 //
 // Opciones en scripts\VidaNiko.ini (se crea solo).
@@ -77,12 +80,13 @@ namespace VidaNikoMod
         float minutosHambre = 90f, minutosSed = 60f, minutosVejiga = 75f;
 
         // ---- estado ----
-        float hambre = 80f, sed = 80f, vejiga = 20f;
+        float hambre = 80f, sed = 80f, vejiga = 20f, intestino = 10f;
+        float bonusComida = 1f; int bonusHasta, proximoGesto, nDesde;
         int vidaAnterior = -1, vidaMax = 100;
         bool sangrando, herido, estabaMuerto;
         int proximoSangrado, proximoDano, proximoGuardado, ultimoTick, ignorarSubidaHasta;
-        bool avisoHambre, avisoSed, avisoVejiga;
-        int accion, accionFin, accionObj = -1;      // 1 usar objeto, 2 orinar
+        bool avisoHambre, avisoSed, avisoVejiga, avisoIntestino;
+        int accion, accionFin, accionObj = -1;      // 1 usar objeto, 2 orinar, 3 de cuerpo, 4 gesto
         int jeringaHasta, proximaJeringa;
         bool[] prev = new bool[256];
         string aviso; int avisoHasta;
@@ -177,6 +181,7 @@ namespace VidaNikoMod
                     if (k == "Hambre") hambre = v;
                     else if (k == "Sed") sed = v;
                     else if (k == "Vejiga") vejiga = v;
+                    else if (k == "Intestino") intestino = v;
                     else foreach (Obj o in objs) if (k == o.Nombre) o.Tengo = (int)v;
                 }
             }
@@ -191,6 +196,7 @@ namespace VidaNikoMod
                 l.Add("Hambre=" + hambre.ToString("0.0", CultureInfo.InvariantCulture));
                 l.Add("Sed=" + sed.ToString("0.0", CultureInfo.InvariantCulture));
                 l.Add("Vejiga=" + vejiga.ToString("0.0", CultureInfo.InvariantCulture));
+                l.Add("Intestino=" + intestino.ToString("0.0", CultureInfo.InvariantCulture));
                 foreach (Obj o in objs) l.Add(o.Nombre + "=" + o.Tengo);
                 File.WriteAllLines(ArchivoEstado, l.ToArray());
             }
@@ -321,6 +327,18 @@ namespace VidaNikoMod
             try { Function.Call("SET_ANIM_GROUP_FOR_CHAR", me, heridoAhora ? "move_injured_generic" : "move_player"); } catch { }
         }
 
+        float Bonus() { return Game.GameTime < bonusHasta ? bonusComida : 1f; }
+        void DarBonus(float m, int minutos)
+        {
+            if (Game.GameTime >= bonusHasta || m >= bonusComida) bonusComida = m;
+            bonusHasta = Game.GameTime + minutos * 60000;
+        }
+        // pantalla a negro mientras Niko va de cuerpo (no hay modelo de Niko sin pantalon)
+        void Fundido(bool afuera)
+        {
+            try { Function.Call(afuera ? "DO_SCREEN_FADE_OUT" : "DO_SCREEN_FADE_IN", afuera ? 1200 : 800); } catch { }
+        }
+
         void SetVida(Ped me, int v)
         {
             ignorarSubidaHasta = Game.GameTime + 600;
@@ -333,6 +351,7 @@ namespace VidaNikoMod
             bool habiaMenu = tienda || rueda || sentado != 0;
             if (rueda) Lento(false);
             if (habiaMenu) Control(true);
+            if (accion == 3) Fundido(false);
             rueda = false; tienda = false; sentado = 0; accion = 0; jeringaHasta = 0;
         }
 
@@ -352,7 +371,7 @@ namespace VidaNikoMod
             if (estabaMuerto)
             {
                 estabaMuerto = false;
-                hambre = Math.Max(hambre, 70f); sed = Math.Max(sed, 70f); vejiga = Math.Min(vejiga, 30f);
+                hambre = Math.Max(hambre, 70f); sed = Math.Max(sed, 70f); vejiga = Math.Min(vejiga, 30f); intestino = Math.Min(intestino, 30f);
                 vidaAnterior = -1; herido = false; sangrando = false;
                 try { Function.Call("SET_ANIM_GROUP_FOR_CHAR", me, "move_player"); } catch { }
             }
@@ -368,8 +387,9 @@ namespace VidaNikoMod
                 int sube = vida - vidaAnterior;
                 if (necesidades && sube >= 3)
                 {
-                    if (sube <= 20) { sed = Math.Min(100f, sed + 35f); vejiga = Math.Min(100f, vejiga + 12f); Aviso("Tomaste algo: sed " + (int)sed + "%"); }
-                    else { hambre = Math.Min(100f, hambre + 40f); sed = Math.Min(100f, sed + 10f); Aviso("Comiste: hambre " + (int)hambre + "%"); }
+                    float m = Bonus();
+                    if (sube <= 20) { sed = Math.Min(100f, sed + 35f * m); vejiga = Math.Min(100f, vejiga + 12f); Aviso("Tomaste algo: sed " + (int)sed + "%"); }
+                    else { hambre = Math.Min(100f, hambre + 40f * m); sed = Math.Min(100f, sed + 10f * m); intestino = Math.Min(100f, intestino + 15f); Aviso("Comiste: hambre " + (int)hambre + "%"); }
                 }
             }
             vidaAnterior = vida;
@@ -380,13 +400,15 @@ namespace VidaNikoMod
                 hambre = Math.Max(0f, hambre - dt * 100f / (minutosHambre * 60f));
                 sed = Math.Max(0f, sed - dt * 100f / (minutosSed * 60f));
                 vejiga = Math.Min(100f, vejiga + dt * 100f / (minutosVejiga * 60f));
+                intestino = Math.Min(100f, intestino + dt * 100f / (minutosVejiga * 2f * 60f));
                 if (hambre < 25f && !avisoHambre) { avisoHambre = true; Aviso("Niko tiene hambre: come algo (U o un puesto de comida)"); }
                 if (hambre > 35f) avisoHambre = false;
                 if (sed < 25f && !avisoSed) { avisoSed = true; Aviso("Niko tiene sed: toma algo (U o una maquina)"); }
                 if (sed > 35f) avisoSed = false;
                 if (vejiga > 80f && !avisoVejiga) { avisoVejiga = true; Aviso("Niko necesita orinar: apreta N"); }
                 if (vejiga < 60f) avisoVejiga = false;
-                if (vejiga >= 100f && accion == 0) { vejiga = 0f; Aviso("No aguantaste mas... Niko se hizo encima"); }
+                if (intestino > 85f && !avisoIntestino) { avisoIntestino = true; Aviso("Niko necesita ir de cuerpo: mantene N"); }
+                if (intestino < 60f) avisoIntestino = false;
                 if ((hambre <= 0f || sed <= 0f) && !mision && now >= proximoDano)
                 {
                     proximoDano = now + 6000;
@@ -476,9 +498,11 @@ namespace VidaNikoMod
             }
             else
             {
-                hambre = Math.Min(100f, hambre + o.Hambre);
-                sed = Math.Min(100f, sed + o.Sed);
+                float m = Bonus();
+                hambre = Math.Min(100f, hambre + o.Hambre * m);
+                sed = Math.Min(100f, sed + o.Sed * m);
                 vejiga = Math.Min(100f, vejiga + o.Vejiga);
+                if (o.Tipo == 1) intestino = Math.Min(100f, intestino + o.Hambre * 0.3f);
                 Aviso((o.Tipo == 1 ? "Comiste: " : "Tomaste: ") + o.Nombre.ToLowerInvariant() + "   (hambre " + (int)hambre + "%, sed " + (int)sed + "%)");
             }
         }
@@ -503,9 +527,15 @@ namespace VidaNikoMod
         // ================= acciones =================
         void TickAcciones(Ped me, int now, int vida)
         {
-            bool shift = Down(VK_SHIFT), ctrl = Down(VK_CTRL);
+            bool shift = Down(VK_SHIFT), ctrl = Down(VK_CTRL), mision = EnMision();
             bool aPie = !me.isInVehicle() && me.isAliveAndWell;
-            bool b = Pressed(VK_B) && !shift, n = Pressed(VK_N) && !shift, z = Pressed(VK_Z) && !shift;
+            bool b = Pressed(VK_B) && !shift, z = Pressed(VK_Z) && !shift;
+            bool nDown = Down(VK_N) && !shift, nRel = !nDown && prev[VK_N];
+            if (nDown && !prev[VK_N]) nDesde = now;
+            prev[VK_N] = nDown;
+            int nTipo = 0;                                     // 1 tocar, 2 mantener
+            if (nDown && nDesde > 0 && now - nDesde > 450) { nTipo = 2; nDesde = 0; }
+            else if (nRel && nDesde > 0) { nTipo = 1; nDesde = 0; }
             bool f9 = Pressed(VK_F9), f8 = Pressed(VK_F8);
             bool uDown = Down(VK_U);
             bool uPress = uDown && !prev[VK_U], uRelease = !uDown && prev[VK_U];
@@ -516,13 +546,15 @@ namespace VidaNikoMod
             // accion en curso (comer, curarse, orinar)
             if (accion != 0)
             {
-                if (!aPie) { accion = 0; return; }
+                if (!aPie) { if (accion == 3) Fundido(false); accion = 0; return; }
                 if (now >= accionFin)
                 {
                     if (accion == 1) TerminarUso(me, vida);
-                    else if (accion == 2) { vejiga = 0f; Aviso("Que alivio"); }
+                    else if (accion == 2) { vejiga = 0f; DarBonus(1.25f, 10); Aviso("Que alivio. Hiciste lugar: la comida te llena mas por 10 min"); }
+                    else if (accion == 3) { intestino = 0f; vejiga = Math.Max(0f, vejiga - 40f); DarBonus(1.5f, 15); Fundido(false); Aviso("Liberado. Hiciste lugar: la comida te llena mucho mas por 15 min"); }
+                    bool gesto = accion == 4;
                     accion = 0;
-                    if (sentado == 0) { try { me.Task.ClearAll(); } catch { } }
+                    if (sentado == 0 && !gesto) { try { me.Task.ClearAll(); } catch { } }
                     else if (sentado == 2) Anim(me, "amb_sit_chair_m", "sit_down_idle_01", true);
                 }
                 return;
@@ -611,24 +643,41 @@ namespace VidaNikoMod
                 if (tiendaObjs.Count > 0) { tienda = true; tiendaSel = 0; tiendaLugar = t; Control(false); return; }
             }
 
-            // ---- orinar ----
-            if (n && necesidades)
+            // ---- bano (bonus) ----
+            if (nTipo == 1 && necesidades)
             {
-                if (vejiga < 15f) Aviso("No tenes ganas");
+                if (vejiga < 15f) Aviso("No tenes ganas de orinar");
                 else
                 {
                     accion = 2; accionFin = now + 6000;
                     try { me.Task.ClearAllImmediately(); } catch { }
                     Anim(me, "amb@bouncer_idles_b", "lookaround_a", true);
-                    try
-                    {
-                        foreach (Ped p in World.GetPeds(me.Position, 20f))
-                        {
-                            if (!Game.Exists(p) || p.Equals(me)) continue;
-                            if (Function.Call<int>("GET_PED_TYPE", p) == 6 && Player.WantedLevel < 1) { Player.WantedLevel = 1; Aviso("Un policia te vio... falta a la moral publica"); break; }
-                        }
-                    }
-                    catch { }
+                }
+            }
+            else if (nTipo == 2 && necesidades)
+            {
+                if (intestino < 25f) Aviso("No tenes ganas de ir de cuerpo");
+                else
+                {
+                    accion = 3; accionFin = now + 9000;
+                    try { me.Task.ClearAllImmediately(); } catch { }
+                    Anim(me, "move_m@cower", "idle", true);
+                    Fundido(true);
+                }
+            }
+
+            // ---- gestos de hambre / sed (solo quieto, sin mision ni policia) ----
+            if (necesidades && now >= proximoGesto && (hambre < 25f || sed < 25f))
+            {
+                bool grave = hambre < 10f || sed < 10f;
+                proximoGesto = now + (grave ? 25000 : 50000);
+                float vel = 0f;
+                try { vel = Function.Call<float>("GET_CHAR_SPEED", me); } catch { }
+                if (vel < 0.5f && !mision && Player.WantedLevel == 0 && !Down(0x02))
+                {
+                    accion = 4; accionFin = now + 3500;
+                    if (sed < hambre) { Anim(me, "amb@yawn", "yawn", false); Aviso("Niko tiene la boca seca..."); }
+                    else { Anim(me, "playidles_tired_1h", "heavy_breathing", false); Aviso("A Niko le ruge la panza..."); }
                 }
             }
 
@@ -666,11 +715,12 @@ namespace VidaNikoMod
         void DibujarHud(int pct, bool critico)
         {
             bool mostrar = accion != 0 || critico || sangrando || rueda || Game.GameTime < jeringaHasta ||
-                           (necesidades && (hambre < 50f || sed < 50f || vejiga > 60f));
+                           (necesidades && (hambre < 50f || sed < 50f || vejiga > 60f || intestino > 60f));
             if (!mostrar) return;
             float y = 0.90f;
             if (necesidades)
             {
+                Barra("INTESTINO", intestino, y, intestino > 85f); y -= 0.022f;
                 Barra("VEJIGA", vejiga, y, vejiga > 80f); y -= 0.022f;
                 Barra("SED", sed, y, sed < 25f); y -= 0.022f;
                 Barra("HAMBRE", hambre, y, hambre < 25f); y -= 0.022f;
@@ -684,6 +734,8 @@ namespace VidaNikoMod
                 Texto(t, 0.5f, 0.85f, 0.32f, 255, 255, 255, true);
             }
             if (accion == 2) Texto("Orinando...", 0.5f, 0.85f, 0.32f, 255, 255, 255, true);
+            if (accion == 3) Texto("(Niko esta ocupado...)", 0.5f, 0.48f, 0.4f, 255, 255, 255, true);
+            if (Game.GameTime < bonusHasta) Texto("Lugar extra: comida x" + bonusComida.ToString("0.00", CultureInfo.InvariantCulture), 0.885f, y - 0.012f, 0.22f, 140, 220, 140, true);
         }
 
         void DibujarTienda()

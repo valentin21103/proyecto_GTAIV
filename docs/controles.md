@@ -17,7 +17,8 @@
 | `B` (farmacia, restaurante o estación) | Tienda: farmacia = curaciones + agua; restaurante = comida y bebida; estación = todo | VidaNiko |
 | `Ctrl+F9` / `Ctrl+F8` | Registrar el lugar actual como farmacia / restaurante (`scripts/Lugares.ini`) | VidaNiko |
 | `Z` | Sentarse (de espaldas al banco); `Z` o `W` para pararse. Sentado comés y tomás sentado | VidaNiko |
-| `N` | Orinar (alivia la vejiga; si te ve un policía, 1 estrella) | VidaNiko |
+| `N` (tocar) | Orinar: vacía la vejiga y la comida te llena x1.25 por 10 min | VidaNiko |
+| `N` (mantener) | Ir de cuerpo (pantalla a negro): vacía el intestino y la comida te llena x1.5 por 15 min | VidaNiko |
 | `I` (manejando) | Apagar / prender motor y luces | MotorAuto |
 | `Shift+B` / `Shift+N` / `Shift+M` | Arma siguiente / anterior / agarrar | ArmasRapidas |
 | `F1` | Una pistola / dos pistolas | Double Homicide |
