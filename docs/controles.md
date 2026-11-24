@@ -9,9 +9,9 @@
 | `K` / `J` | Aceptar / rechazar multa | Stop Right There |
 | `L` (manejando) | Guardar auto en Mis autos | MisAutos |
 | `L` (a pie) | Lista de autos: flechas, `Enter` pedir, `Supr` borrar | MisAutos |
-| `T` (atrás de tu auto activo) | Abrir el baúl: guardar / sacar armas | MisAutos |
-| `G` | Cargar nafta en estación / usar bidón | MisAutos |
-| `H` | Comprar bidón en estación | MisAutos |
+| `E` (atrás de tu auto activo) | Abrir / cerrar el baúl: guardar / sacar armas | MisAutos |
+| `E` (en estación, a pie) | Menú: cargar nafta o comprar bidón (`E` de nuevo corta la carga) | MisAutos |
+| `E` (junto a tu auto, lejos de estación) | Usar un bidón | MisAutos |
 | `U` (tocar) | Usar la curación que más sirve (gasa si sangrás) | VidaNiko |
 | `U` (mantener) | Rueda de objetos (curaciones, comida, bebida, cigarrillos): mouse o flechas y soltar | VidaNiko |
 | `U` (en tu auto, parado) | Guantera: hasta 3 bebidas; Enter tomar / guardar, Retroceso sacar | VidaNiko + MisAutos |
