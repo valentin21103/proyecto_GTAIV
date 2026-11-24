@@ -811,6 +811,7 @@ namespace MisAutosMod
             sucio = true;
         }
 
+        // ================= dibujo (estilo GTA IV, ver clase IV) =================
         void DibujarBaul()
         {
             if (activoIdx < 0 || activoIdx >= autos.Count) return;
@@ -819,92 +820,160 @@ namespace MisAutosMod
             if (me == null) return;
             List<int[]> encima = ArmasEncima(me);
             List<int[]> enBaul = autos[activoIdx].Baul;
-            Function.Call("DRAW_RECT", 0.5f, 0.42f, 0.56f, 0.46f, 0, 0, 0, 175);
-            Texto("BAUL - " + autos[activoIdx].Nombre, 0.5f, 0.2f, 0.36f, 230, 200, 120, true);
-            Texto("ENCIMA", 0.36f, 0.245f, 0.3f, baulLado == 0 ? 255 : 150, baulLado == 0 ? 255 : 150, baulLado == 0 ? 255 : 150, true);
-            Texto("EN EL BAUL (" + enBaul.Count + "/" + MaxBaul + ")", 0.64f, 0.245f, 0.3f, baulLado == 1 ? 255 : 150, baulLado == 1 ? 255 : 150, baulLado == 1 ? 255 : 150, true);
+            float w = 0.26f, y0 = 0.16f;
             for (int lado = 0; lado < 2; lado++)
             {
                 List<int[]> l = lado == 0 ? encima : enBaul;
-                float x = lado == 0 ? 0.36f : 0.64f;
-                if (l.Count == 0) Texto("(vacio)", x, 0.285f, 0.26f, 140, 140, 140, true);
+                float x = lado == 0 ? 0.03f : 0.03f + w + 0.01f;
+                IV.Titulo(lado == 0 ? "Encima" : "Baul " + enBaul.Count + "/" + MaxBaul, x, y0, w);
+                if (lado == baulLado) IV.Rect(x, y0 + 0.042f, w, 0.003f, IV.BlancoPuro, 255);
+                float y = y0 + 0.045f;
+                if (l.Count == 0) { IV.Item("(vacio)", null, x, y, w, false, true, 0f); y += IV.Fila; }
                 for (int i = 0; i < l.Count; i++)
                 {
-                    float y = 0.285f + i * 0.032f;
-                    bool s = lado == baulLado && i == baulSel;
-                    if (s) Function.Call("DRAW_RECT", x, y + 0.013f, 0.25f, 0.03f, 255, 255, 255, 45);
-                    Texto(NombreArma(l[i][0]) + "  (" + l[i][1] + ")", x, y, 0.26f, s ? 255 : 200, s ? 255 : 200, s ? 255 : 200, true);
+                    IV.Item(NombreArma(l[i][0]), l[i][1].ToString(), x, y, w, lado == baulLado && i == baulSel, false, 0.2f);
+                    y += IV.Fila;
                 }
             }
-            Texto("Izq/Der: lado   Arriba/Abajo: elegir   Enter: " + (baulLado == 0 ? "guardar" : "sacar") + "   T: cerrar", 0.5f, 0.615f, 0.24f, 190, 190, 190, true);
+            int filas = Math.Max(1, Math.Max(encima.Count, enBaul.Count));
+            IV.Pie(autos[activoIdx].Nombre + "     Izq/Der: lado   Enter: " + (baulLado == 0 ? "guardar" : "sacar") + "   T: cerrar",
+                   0.03f, y0 + 0.045f + filas * IV.Fila, w * 2 + 0.01f);
         }
 
-        // ================= dibujo =================
-        void Texto(string s, float x, float y, float scale, int r, int g, int b, bool centro)
-        {
-            Function.Call("SET_TEXT_FONT", 0);
-            Function.Call("SET_TEXT_SCALE", scale, scale);
-            Function.Call("SET_TEXT_COLOUR", r, g, b, 255);
-            Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 255);
-            if (centro) Function.Call("SET_TEXT_CENTRE", 1);
-            Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
-        }
-
-        void Ayuda(string s)
-        {
-            Function.Call("DRAW_RECT", 0.5f, 0.905f, 0.62f, 0.04f, 0, 0, 0, 150);
-            Texto(s, 0.5f, 0.89f, 0.27f, 255, 255, 255, true);
-        }
+        void Ayuda(string s) { IV.Ayuda(s, 0); }
 
         void DibujarNafta(Tanque t)
         {
             float pct = t.Cap > 0 ? t.L / t.Cap : 0f;
-            float x = 0.885f, y = 0.955f, w = 0.09f, hh = 0.012f;
-            Function.Call("DRAW_RECT", x, y, w + 0.006f, hh + 0.008f, 0, 0, 0, 150);
-            Function.Call("DRAW_RECT", x, y, w, hh, 60, 60, 60, 200);
-            int r = 230, g = 200, b = 60;
-            if (t.L <= t.Res) { r = 230; g = 60; b = 50; }
-            float fw = w * pct;
-            if (fw > 0.001f) Function.Call("DRAW_RECT", x - w / 2f + fw / 2f, y, fw, hh, r, g, b, 230);
-            Texto("NAFTA " + (int)(pct * 100f) + "%", x - w / 2f, y - 0.034f, 0.24f, 230, 230, 230, false);
+            IV.Barra("NAFTA", pct * 100f, 0.86f, 0.945f, 0.085f, IV.AmarilloClaro, t.L <= t.Res);
         }
 
         void DibujarCarga()
         {
             if (cargaT == null) return;
             float pct = cargaT.Cap > 0 ? cargaT.L / cargaT.Cap : 0f;
-            Function.Call("DRAW_RECT", 0.5f, 0.86f, 0.3f, 0.075f, 0, 0, 0, 160);
-            string t1 = cargaBidon ? "Cargando bidon..." : "Cargando nafta...  $" + (cargaPagado + (int)cargaDeuda);
-            Texto(t1, 0.5f, 0.828f, 0.3f, 255, 255, 255, true);
-            Function.Call("DRAW_RECT", 0.5f, 0.872f, 0.26f, 0.014f, 60, 60, 60, 220);
-            float fw = 0.26f * pct;
-            if (fw > 0.001f) Function.Call("DRAW_RECT", 0.5f - 0.13f + fw / 2f, 0.872f, fw, 0.014f, 230, 200, 60, 230);
-            Texto((int)(pct * 100f) + "%   (G: cortar)", 0.5f, 0.882f, 0.24f, 210, 210, 210, true);
+            string t1 = cargaBidon ? "Cargando el bidon" : "Cargando nafta   $" + (cargaPagado + (int)cargaDeuda);
+            IV.Progreso(t1 + "   (G: cortar)", pct);
         }
 
         void DibujarMenu()
         {
-            float x = 0.035f, y = 0.18f, step = 0.032f;
+            float x = 0.03f, y = 0.16f, w = 0.3f;
+            IV.Titulo("Mis autos", x, y, w);
+            y += 0.045f;
             int n = autos.Count;
-            Function.Call("DRAW_RECT", 0.17f, y + (n + 3) * step * 0.5f - 0.01f, 0.29f, (n + 3) * step + 0.02f, 0, 0, 0, 170);
-            Texto("MIS AUTOS", x, y - 0.005f, 0.42f, 120, 200, 255, false);
+            if (n == 0) { IV.Item("(no tenes autos guardados)", null, x, y, w, false, true, 0f); y += IV.Fila; }
             for (int i = 0; i < n; i++)
             {
-                float yy = y + (i + 1) * step;
-                bool s = i == sel;
-                if (s) Function.Call("DRAW_RECT", 0.17f, yy + 0.014f, 0.285f, step * 0.95f, 255, 255, 255, 40);
                 string nafta = autos[i].Nafta < 0 ? "lleno" : autos[i].Nafta.ToString("0", CultureInfo.InvariantCulture) + " L";
-                Texto((s ? "> " : "  ") + autos[i].Nombre + (i == activoIdx ? "  (activo)" : ""), x, yy, 0.30f, s ? 255 : 190, s ? 255 : 190, s ? 255 : 190, false);
-                Texto(nafta, x + 0.2f, yy, 0.28f, 200, 190, 120, false);
+                IV.Item(autos[i].Nombre + (i == activoIdx ? "  *" : ""), nafta, x, y, w, i == sel, false, 0.235f);
+                y += IV.Fila;
             }
-            float fy = y + (n + 1) * step + 0.005f;
-            Texto("Enter: pedirlo   Supr: borrar   L: cerrar   Bidones: " + bidones, x, fy, 0.24f, 190, 190, 190, false);
+            IV.Pie("Enter: pedirlo   Supr: borrar   L: cerrar   Bidones: " + bidones, x, y, w);
         }
 
-        void DibujarAviso()
+        void DibujarAviso() { IV.Aviso(aviso, 1); }
+    }
+    // <estilo-iv> (copiado de tools/EstiloIV.cs con tools/estilo_sync.py; no editar aca)
+    // Estilo visual comun de nuestros mods, con los colores de common/data/hudColor.dat de GTA IV.
+    static class IV
+    {
+        // paleta del juego
+        public static readonly int[] Blanco = { 225, 225, 225 }, BlancoPuro = { 255, 255, 255 }, Gris = { 140, 140, 140 },
+            Atenuado = { 90, 90, 90 }, Celeste = { 74, 148, 160 }, CelesteClaro = { 151, 201, 206 }, CelesteOscuro = { 51, 105, 114 },
+            Verde = { 87, 124, 88 }, Naranja = { 188, 130, 74 }, VerdeClaro = { 159, 201, 166 }, Rojo = { 153, 69, 69 }, RojoClaro = { 206, 155, 155 },
+            Amarillo = { 206, 169, 13 }, AmarilloClaro = { 215, 197, 121 };
+
+        public const float Fila = 0.034f;
+
+        // rectangulo con esquina arriba-izquierda en (x, y)
+        public static void Rect(float x, float y, float w, float h, int[] c, int a)
         {
-            Function.Call("DRAW_RECT", 0.5f, 0.12f, 0.5f, 0.045f, 0, 0, 0, 160);
-            Texto(aviso, 0.5f, 0.103f, 0.30f, 255, 255, 255, true);
+            GTA.Native.Function.Call("DRAW_RECT", x + w / 2f, y + h / 2f, w, h, c[0], c[1], c[2], a);
+        }
+
+        // alin: 0 izquierda, 1 centro
+        public static void Texto(string s, float x, float y, float esc, int[] c, int a, int alin)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            GTA.Native.Function.Call("SET_TEXT_FONT", 0);
+            GTA.Native.Function.Call("SET_TEXT_SCALE", esc, esc);
+            GTA.Native.Function.Call("SET_TEXT_COLOUR", c[0], c[1], c[2], a);
+            GTA.Native.Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 200);
+            if (alin == 1) GTA.Native.Function.Call("SET_TEXT_CENTRE", 1);
+            GTA.Native.Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
+        }
+
+        // titulo de panel: texto blanco en mayusculas con una linea celeste abajo
+        public static void Titulo(string s, float x, float y, float w)
+        {
+            Rect(x, y, w, 0.042f, new int[] { 0, 0, 0 }, 200);
+            Texto(s.ToUpperInvariant(), x + 0.008f, y + 0.007f, 0.40f, BlancoPuro, 255, 0);
+            Rect(x, y + 0.042f, w, 0.003f, Celeste, 255);
+        }
+
+        // fila de menu; sel = resaltada en celeste
+        public static void Item(string izq, string der, float x, float y, float w, bool sel, bool apagado, float colDer)
+        {
+            Item(izq, der, x, y, w, sel, apagado, colDer, CelesteClaro);
+        }
+        public static void Item(string izq, string der, float x, float y, float w, bool sel, bool apagado, float colDer, int[] cDer)
+        {
+            Rect(x, y, w, Fila, new int[] { 0, 0, 0 }, 165);
+            if (sel) Rect(x, y, w, Fila, Celeste, 210);
+            int[] c = apagado ? Atenuado : (sel ? BlancoPuro : Blanco);
+            Texto(izq, x + 0.008f, y + 0.006f, 0.29f, c, 255, 0);
+            if (der != null) Texto(der, x + colDer, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
+        }
+
+        // pie con las teclas, debajo del menu
+        public static void Pie(string s, float x, float y, float w)
+        {
+            Rect(x, y, w, 0.003f, Celeste, 255);
+            Rect(x, y + 0.003f, w, 0.03f, new int[] { 0, 0, 0 }, 185);
+            Texto(s, x + 0.008f, y + 0.009f, 0.235f, Gris, 255, 0);
+        }
+
+        // caja de ayuda como la del juego (arriba a la izquierda)
+        // fila: 0 MisAutos, 1 VidaNiko (para que no se pisen)
+        public static void Ayuda(string s, int fila)
+        {
+            float w = Math.Max(0.16f, 0.0058f * s.Length + 0.02f), y = 0.055f + fila * 0.05f;
+            Rect(0.03f, y, w, 0.045f, new int[] { 0, 0, 0 }, 185);
+            Texto(s, 0.04f, y + 0.012f, 0.28f, BlancoPuro, 255, 0);
+        }
+
+        // aviso tipo subtitulo del juego (abajo al centro, sin caja)
+        public static void Aviso(string s, int fila)
+        {
+            Texto(s, 0.5f, 0.875f + fila * 0.032f, 0.33f, BlancoPuro, 255, 1);
+        }
+
+        // barra fina (necesidades, nafta); alerta = parpadea en rojo como la vida del juego
+        public static void Barra(string nombre, float valor, float x, float y, float w, int[] c, bool alerta)
+        {
+            float h = 0.009f;
+            int a = 230;
+            if (alerta && (Environment.TickCount / 400) % 2 == 0) a = 110;
+            Rect(x - 0.002f, y - 0.003f, w + 0.004f, h + 0.006f, new int[] { 0, 0, 0 }, 170);
+            Rect(x, y, w, h, alerta ? RojoOscuroDe(c) : CelesteOscuroDe(c), 190);
+            float fw = w * Math.Max(0f, Math.Min(1f, valor / 100f));
+            if (fw > 0.001f) Rect(x, y, fw, h, alerta ? Rojo : c, a);
+            Texto(nombre, x - 0.004f - 0.0058f * nombre.Length, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 0);
+        }
+
+        static int[] CelesteOscuroDe(int[] c) { return new int[] { c[0] / 3, c[1] / 3, c[2] / 3 }; }
+        static int[] RojoOscuroDe(int[] c) { return new int[] { 60, 25, 25 }; }
+
+        // barra de progreso al centro (cargar nafta, curarse, comer)
+        public static void Progreso(string s, float valor)
+        {
+            Rect(0.4f, 0.80f, 0.2f, 0.05f, new int[] { 0, 0, 0 }, 170);
+            Texto(s, 0.5f, 0.805f, 0.27f, BlancoPuro, 255, 1);
+            Rect(0.41f, 0.833f, 0.18f, 0.008f, CelesteOscuro, 200);
+            float fw = 0.18f * Math.Max(0f, Math.Min(1f, valor));
+            if (fw > 0.001f) Rect(0.41f, 0.833f, fw, 0.008f, Celeste, 255);
         }
     }
+    // </estilo-iv>
 }

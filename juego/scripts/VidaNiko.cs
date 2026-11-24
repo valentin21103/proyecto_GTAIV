@@ -86,7 +86,7 @@ namespace VidaNikoMod
         bool sangrando, herido, estabaMuerto;
         int proximoSangrado, proximoDano, proximoGuardado, ultimoTick, ignorarSubidaHasta;
         bool avisoHambre, avisoSed, avisoVejiga, avisoIntestino;
-        int accion, accionFin, accionObj = -1;      // 1 usar objeto, 2 orinar, 3 de cuerpo, 4 gesto
+        int accion, accionFin, accionDur, accionObj = -1;      // 1 usar objeto, 2 orinar, 3 de cuerpo, 4 gesto
         int jeringaHasta, proximaJeringa;
         bool[] prev = new bool[256];
         string aviso; int avisoHasta;
@@ -465,7 +465,7 @@ namespace VidaNikoMod
             if (o.Tengo <= 0) { Aviso("No tenes " + o.Nombre.ToLowerInvariant()); return; }
             if (o.Tipo == 0 && vida >= vidaMax && !(i == GASA && sangrando)) { Aviso("No estas herido"); return; }
             o.Tengo--;
-            accion = 1; accionObj = i; accionFin = now + o.Ms;
+            accion = 1; accionObj = i; accionFin = now + o.Ms; accionDur = o.Ms;
             if (sentado == 2)
             {
                 if (o.SetSentado != null) Anim(me, o.SetSentado, o.ClipSentado, true);
@@ -649,7 +649,7 @@ namespace VidaNikoMod
                 if (vejiga < 15f) Aviso("No tenes ganas de orinar");
                 else
                 {
-                    accion = 2; accionFin = now + 6000;
+                    accion = 2; accionFin = now + 6000; accionDur = 6000;
                     try { me.Task.ClearAllImmediately(); } catch { }
                     Anim(me, "amb@bouncer_idles_b", "lookaround_a", true);
                 }
@@ -659,7 +659,7 @@ namespace VidaNikoMod
                 if (intestino < 25f) Aviso("No tenes ganas de ir de cuerpo");
                 else
                 {
-                    accion = 3; accionFin = now + 9000;
+                    accion = 3; accionFin = now + 9000; accionDur = 9000;
                     try { me.Task.ClearAllImmediately(); } catch { }
                     Anim(me, "move_m@cower", "idle", true);
                     Fundido(true);
@@ -675,109 +675,194 @@ namespace VidaNikoMod
                 try { vel = Function.Call<float>("GET_CHAR_SPEED", me); } catch { }
                 if (vel < 0.5f && !mision && Player.WantedLevel == 0 && !Down(0x02))
                 {
-                    accion = 4; accionFin = now + 3500;
+                    accion = 4; accionFin = now + 3500; accionDur = 3500;
                     if (sed < hambre) { Anim(me, "amb@yawn", "yawn", false); Aviso("Niko tiene la boca seca..."); }
                     else { Anim(me, "playidles_tired_1h", "heavy_breathing", false); Aviso("A Niko le ruge la panza..."); }
                 }
             }
 
-            if (t != null) Ayuda("B: comprar en " + t.Nombre);
+            if (t != null && !sangrando) Ayuda("Apreta B para comprar en " + t.Nombre + ".");
         }
 
-        // ================= dibujo =================
-        void Texto(string s, float x, float y, float scale, int r, int g, int b, bool centro)
-        {
-            Function.Call("SET_TEXT_FONT", 0);
-            Function.Call("SET_TEXT_SCALE", scale, scale);
-            Function.Call("SET_TEXT_COLOUR", r, g, b, 255);
-            Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 255);
-            if (centro) Function.Call("SET_TEXT_CENTRE", 1);
-            Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
-        }
-
-        void Ayuda(string s)
-        {
-            Function.Call("DRAW_RECT", 0.5f, 0.945f, 0.4f, 0.035f, 0, 0, 0, 150);
-            Texto(s, 0.5f, 0.932f, 0.26f, 255, 255, 255, true);
-        }
-
-        void Barra(string nombre, float valor, float y, bool alerta)
-        {
-            float x = 0.885f, w = 0.09f, h = 0.010f;
-            Function.Call("DRAW_RECT", x, y, w + 0.006f, h + 0.006f, 0, 0, 0, 140);
-            Function.Call("DRAW_RECT", x, y, w, h, 60, 60, 60, 200);
-            float fw = w * Math.Max(0f, Math.Min(1f, valor / 100f));
-            int r = alerta ? 230 : 120, g = alerta ? 70 : 200, b = alerta ? 50 : 120;
-            if (fw > 0.001f) Function.Call("DRAW_RECT", x - w / 2f + fw / 2f, y, fw, h, r, g, b, 230);
-            Texto(nombre, x - w / 2f - 0.059f, y - 0.011f, 0.22f, 220, 220, 220, false);
-        }
+        // ================= dibujo (estilo GTA IV, ver clase IV) =================
+        void Ayuda(string s) { IV.Ayuda(s, 1); }
 
         void DibujarHud(int pct, bool critico)
         {
-            bool mostrar = accion != 0 || critico || sangrando || rueda || Game.GameTime < jeringaHasta ||
+            int now = Game.GameTime;
+            bool mostrar = accion == 1 || accion == 2 || critico || sangrando || rueda || now < jeringaHasta || now < bonusHasta ||
                            (necesidades && (hambre < 50f || sed < 50f || vejiga > 60f || intestino > 60f));
-            if (!mostrar) return;
-            float y = 0.90f;
-            if (necesidades)
+            if (mostrar)
             {
-                Barra("INTESTINO", intestino, y, intestino > 85f); y -= 0.022f;
-                Barra("VEJIGA", vejiga, y, vejiga > 80f); y -= 0.022f;
-                Barra("SED", sed, y, sed < 25f); y -= 0.022f;
-                Barra("HAMBRE", hambre, y, hambre < 25f); y -= 0.022f;
+                float x = 0.86f, w = 0.085f, y = 0.915f;
+                if (necesidades)
+                {
+                    IV.Barra("INTESTINO", intestino, x, y, w, IV.Naranja, intestino > 85f); y -= 0.021f;
+                    IV.Barra("VEJIGA", vejiga, x, y, w, IV.Amarillo, vejiga > 80f); y -= 0.021f;
+                    IV.Barra("SED", sed, x, y, w, IV.Celeste, sed < 25f); y -= 0.021f;
+                    IV.Barra("HAMBRE", hambre, x, y, w, IV.AmarilloClaro, hambre < 25f); y -= 0.021f;
+                }
+                if (salud) { IV.Barra(sangrando ? "SANGRANDO" : "SALUD", pct, x, y, w, IV.VerdeClaro, critico || sangrando); y -= 0.021f; }
+                if (now < bonusHasta) IV.Texto("LUGAR EXTRA  x" + bonusComida.ToString("0.00", CultureInfo.InvariantCulture), x, y - 0.006f, 0.21f, IV.VerdeClaro, 255, 0);
             }
-            if (salud) { Barra(sangrando ? "SANGRANDO" : "SALUD", pct, y, critico || sangrando); y -= 0.022f; }
-            if (sangrando && !rueda) Texto("U: gasa (" + objs[GASA].Tengo + ")   mantener U: rueda", 0.84f, y - 0.012f, 0.22f, 255, 120, 100, true);
+            if (sangrando && !rueda && !tienda && accion == 0) Ayuda("Te estas desangrando. Apreta U para ponerte una gasa (" + objs[GASA].Tengo + ").");
             if (accion == 1 && accionObj >= 0)
             {
-                string t = accionObj == GASA ? "Poniendote una gasa..." : accionObj == ANALGESICO ? "Tomando un analgesico..." :
-                           accionObj == JERINGA ? "Inyectandote..." : (objs[accionObj].Tipo == 1 ? "Comiendo..." : "Tomando...");
-                Texto(t, 0.5f, 0.85f, 0.32f, 255, 255, 255, true);
+                string t = accionObj == GASA ? "Poniendote una gasa" : accionObj == ANALGESICO ? "Tomando un analgesico" :
+                           accionObj == JERINGA ? "Inyectandote" : (objs[accionObj].Tipo == 1 ? "Comiendo" : "Tomando");
+                IV.Progreso(t, Avance(now));
             }
-            if (accion == 2) Texto("Orinando...", 0.5f, 0.85f, 0.32f, 255, 255, 255, true);
-            if (accion == 3) Texto("(Niko esta ocupado...)", 0.5f, 0.48f, 0.4f, 255, 255, 255, true);
-            if (Game.GameTime < bonusHasta) Texto("Lugar extra: comida x" + bonusComida.ToString("0.00", CultureInfo.InvariantCulture), 0.885f, y - 0.012f, 0.22f, 140, 220, 140, true);
+            if (accion == 2) IV.Progreso("Orinando", Avance(now));
+            if (accion == 3) IV.Texto("Niko esta ocupado...", 0.5f, 0.47f, 0.42f, IV.BlancoPuro, 255, 1);
         }
+
+        float Avance(int now) { return accionDur > 0 ? 1f - (accionFin - now) / (float)accionDur : 0f; }
 
         void DibujarTienda()
         {
             int cnt = tiendaObjs.Count;
-            float x = 0.5f, y = 0.26f, alto = 0.07f + cnt * 0.036f;
-            Function.Call("DRAW_RECT", x, y + alto / 2f, 0.4f, alto + 0.03f, 0, 0, 0, 180);
-            Texto(tiendaLugar != null ? tiendaLugar.Nombre.ToUpperInvariant() : "TIENDA", x, y - 0.005f, 0.36f, 120, 220, 140, true);
+            float x = 0.03f, y = 0.16f, w = 0.34f;
+            IV.Titulo(tiendaLugar != null ? tiendaLugar.Nombre : "Tienda", x, y, w);
+            y += 0.045f;
             for (int k = 0; k < cnt; k++)
             {
                 Obj o = objs[tiendaObjs[k]];
-                float yy = y + 0.035f + k * 0.036f;
-                bool s = k == tiendaSel;
-                if (s) Function.Call("DRAW_RECT", x, yy + 0.013f, 0.38f, 0.032f, 255, 255, 255, 40);
-                Texto(o.Nombre + "  $" + o.Precio + "   (" + o.Desc + ")   tenes " + o.Tengo + "/" + o.Max, x, yy, 0.26f, s ? 255 : 190, s ? 255 : 190, s ? 255 : 190, true);
+                bool lleno = o.Tengo >= o.Max;
+                IV.Item(o.Nombre + "   " + o.Tengo + "/" + o.Max, "$" + o.Precio, x, y, w, k == tiendaSel, lleno, 0.29f, IV.VerdeClaro);
+                y += IV.Fila;
             }
-            Texto("Flechas: elegir   Enter: comprar   B: salir", x, y + 0.04f + cnt * 0.036f, 0.22f, 190, 190, 190, true);
+            Obj sel = objs[tiendaObjs[tiendaSel]];
+            IV.Pie(sel.Desc + "     Enter: comprar   B: salir", x, y, w);
         }
 
         void DibujarRueda()
         {
-            float cx = 0.5f, cy = 0.5f, rx = 0.17f, ry = 0.25f;
+            float cx = 0.5f, cy = 0.48f, rx = 0.165f, ry = 0.25f;
             int n = objs.Length;
-            Function.Call("DRAW_RECT", cx, cy, 0.5f, 0.66f, 0, 0, 0, 110);
             for (int i = 0; i < n; i++)
             {
                 double ang = i * 2 * Math.PI / n;
                 float px = cx + (float)Math.Sin(ang) * rx, py = cy - (float)Math.Cos(ang) * ry;
                 Obj o = objs[i];
                 bool s = i == ruedaSel, hay = o.Tengo > 0;
-                Function.Call("DRAW_RECT", px, py, 0.1f, 0.075f, s ? 230 : 35, s ? 200 : 35, s ? 60 : 35, s ? 230 : 190);
-                int c = s ? 0 : (hay ? 255 : 110);
-                Texto(o.Nombre, px, py - 0.026f, 0.27f, c, c, c, true);
-                Texto("x" + o.Tengo, px, py + 0.002f, 0.27f, c, c, c, true);
+                IV.Rect(px - 0.05f, py - 0.034f, 0.1f, 0.068f, new int[] { 0, 0, 0 }, s ? 220 : 175);
+                if (s) IV.Rect(px - 0.05f, py - 0.034f, 0.1f, 0.068f, IV.Celeste, 220);
+                IV.Rect(px - 0.05f, py + 0.031f, 0.1f, 0.003f, hay ? IV.Celeste : IV.Atenuado, 255);
+                int[] c = s ? IV.BlancoPuro : (hay ? IV.Blanco : IV.Atenuado);
+                IV.Texto(o.Nombre.ToUpperInvariant(), px, py - 0.026f, 0.25f, c, 255, 1);
+                IV.Texto("x" + o.Tengo, px, py + 0.0f, 0.27f, s ? IV.BlancoPuro : (hay ? IV.CelesteClaro : IV.Atenuado), 255, 1);
             }
-            Texto(ruedaSel >= 0 ? objs[ruedaSel].Nombre + ": " + objs[ruedaSel].Desc : "Move el mouse y solta U", cx, cy - 0.012f, 0.27f, 230, 230, 230, true);
+            IV.Rect(cx - 0.085f, cy - 0.03f, 0.17f, 0.06f, new int[] { 0, 0, 0 }, 185);
+            if (ruedaSel >= 0)
+            {
+                IV.Texto(objs[ruedaSel].Nombre.ToUpperInvariant(), cx, cy - 0.025f, 0.3f, IV.BlancoPuro, 255, 1);
+                IV.Texto(objs[ruedaSel].Desc, cx, cy + 0.002f, 0.24f, IV.CelesteClaro, 255, 1);
+            }
+            else IV.Texto("Mueve el mouse y solta U", cx, cy - 0.012f, 0.25f, IV.Gris, 255, 1);
         }
 
-        void DibujarAviso()
+        void DibujarAviso() { IV.Aviso(aviso, 0); }
+    }
+    // <estilo-iv> (copiado de tools/EstiloIV.cs con tools/estilo_sync.py; no editar aca)
+    // Estilo visual comun de nuestros mods, con los colores de common/data/hudColor.dat de GTA IV.
+    static class IV
+    {
+        // paleta del juego
+        public static readonly int[] Blanco = { 225, 225, 225 }, BlancoPuro = { 255, 255, 255 }, Gris = { 140, 140, 140 },
+            Atenuado = { 90, 90, 90 }, Celeste = { 74, 148, 160 }, CelesteClaro = { 151, 201, 206 }, CelesteOscuro = { 51, 105, 114 },
+            Verde = { 87, 124, 88 }, Naranja = { 188, 130, 74 }, VerdeClaro = { 159, 201, 166 }, Rojo = { 153, 69, 69 }, RojoClaro = { 206, 155, 155 },
+            Amarillo = { 206, 169, 13 }, AmarilloClaro = { 215, 197, 121 };
+
+        public const float Fila = 0.034f;
+
+        // rectangulo con esquina arriba-izquierda en (x, y)
+        public static void Rect(float x, float y, float w, float h, int[] c, int a)
         {
-            Function.Call("DRAW_RECT", 0.5f, 0.165f, 0.5f, 0.045f, 0, 0, 0, 160);
-            Texto(aviso, 0.5f, 0.148f, 0.30f, 255, 255, 255, true);
+            GTA.Native.Function.Call("DRAW_RECT", x + w / 2f, y + h / 2f, w, h, c[0], c[1], c[2], a);
+        }
+
+        // alin: 0 izquierda, 1 centro
+        public static void Texto(string s, float x, float y, float esc, int[] c, int a, int alin)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            GTA.Native.Function.Call("SET_TEXT_FONT", 0);
+            GTA.Native.Function.Call("SET_TEXT_SCALE", esc, esc);
+            GTA.Native.Function.Call("SET_TEXT_COLOUR", c[0], c[1], c[2], a);
+            GTA.Native.Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 200);
+            if (alin == 1) GTA.Native.Function.Call("SET_TEXT_CENTRE", 1);
+            GTA.Native.Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
+        }
+
+        // titulo de panel: texto blanco en mayusculas con una linea celeste abajo
+        public static void Titulo(string s, float x, float y, float w)
+        {
+            Rect(x, y, w, 0.042f, new int[] { 0, 0, 0 }, 200);
+            Texto(s.ToUpperInvariant(), x + 0.008f, y + 0.007f, 0.40f, BlancoPuro, 255, 0);
+            Rect(x, y + 0.042f, w, 0.003f, Celeste, 255);
+        }
+
+        // fila de menu; sel = resaltada en celeste
+        public static void Item(string izq, string der, float x, float y, float w, bool sel, bool apagado, float colDer)
+        {
+            Item(izq, der, x, y, w, sel, apagado, colDer, CelesteClaro);
+        }
+        public static void Item(string izq, string der, float x, float y, float w, bool sel, bool apagado, float colDer, int[] cDer)
+        {
+            Rect(x, y, w, Fila, new int[] { 0, 0, 0 }, 165);
+            if (sel) Rect(x, y, w, Fila, Celeste, 210);
+            int[] c = apagado ? Atenuado : (sel ? BlancoPuro : Blanco);
+            Texto(izq, x + 0.008f, y + 0.006f, 0.29f, c, 255, 0);
+            if (der != null) Texto(der, x + colDer, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
+        }
+
+        // pie con las teclas, debajo del menu
+        public static void Pie(string s, float x, float y, float w)
+        {
+            Rect(x, y, w, 0.003f, Celeste, 255);
+            Rect(x, y + 0.003f, w, 0.03f, new int[] { 0, 0, 0 }, 185);
+            Texto(s, x + 0.008f, y + 0.009f, 0.235f, Gris, 255, 0);
+        }
+
+        // caja de ayuda como la del juego (arriba a la izquierda)
+        // fila: 0 MisAutos, 1 VidaNiko (para que no se pisen)
+        public static void Ayuda(string s, int fila)
+        {
+            float w = Math.Max(0.16f, 0.0058f * s.Length + 0.02f), y = 0.055f + fila * 0.05f;
+            Rect(0.03f, y, w, 0.045f, new int[] { 0, 0, 0 }, 185);
+            Texto(s, 0.04f, y + 0.012f, 0.28f, BlancoPuro, 255, 0);
+        }
+
+        // aviso tipo subtitulo del juego (abajo al centro, sin caja)
+        public static void Aviso(string s, int fila)
+        {
+            Texto(s, 0.5f, 0.875f + fila * 0.032f, 0.33f, BlancoPuro, 255, 1);
+        }
+
+        // barra fina (necesidades, nafta); alerta = parpadea en rojo como la vida del juego
+        public static void Barra(string nombre, float valor, float x, float y, float w, int[] c, bool alerta)
+        {
+            float h = 0.009f;
+            int a = 230;
+            if (alerta && (Environment.TickCount / 400) % 2 == 0) a = 110;
+            Rect(x - 0.002f, y - 0.003f, w + 0.004f, h + 0.006f, new int[] { 0, 0, 0 }, 170);
+            Rect(x, y, w, h, alerta ? RojoOscuroDe(c) : CelesteOscuroDe(c), 190);
+            float fw = w * Math.Max(0f, Math.Min(1f, valor / 100f));
+            if (fw > 0.001f) Rect(x, y, fw, h, alerta ? Rojo : c, a);
+            Texto(nombre, x - 0.004f - 0.0058f * nombre.Length, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 0);
+        }
+
+        static int[] CelesteOscuroDe(int[] c) { return new int[] { c[0] / 3, c[1] / 3, c[2] / 3 }; }
+        static int[] RojoOscuroDe(int[] c) { return new int[] { 60, 25, 25 }; }
+
+        // barra de progreso al centro (cargar nafta, curarse, comer)
+        public static void Progreso(string s, float valor)
+        {
+            Rect(0.4f, 0.80f, 0.2f, 0.05f, new int[] { 0, 0, 0 }, 170);
+            Texto(s, 0.5f, 0.805f, 0.27f, BlancoPuro, 255, 1);
+            Rect(0.41f, 0.833f, 0.18f, 0.008f, CelesteOscuro, 200);
+            float fw = 0.18f * Math.Max(0f, Math.Min(1f, valor));
+            if (fw > 0.001f) Rect(0.41f, 0.833f, fw, 0.008f, Celeste, 255);
         }
     }
+    // </estilo-iv>
 }
