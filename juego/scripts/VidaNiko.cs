@@ -135,7 +135,7 @@ namespace VidaNikoMod
                 else if (o.Nombre == "Agua") o.Prop = "AMB_JUICE_BOT";
                 else if (o.Nombre == "Gaseosa") o.Prop = "AMB_CAN_DRINK_1";
                 else if (o.Nombre == "Cerveza") o.Prop = "AMB_WINE";
-                else if (o.Nombre == "Cigarrillos") { o.Prop = "BM_CHAR_FAG"; o.Pack = 20; }
+                else if (o.Nombre == "Cigarrillos") { o.Prop = "BM_CHAR_FAG_F"; o.Pack = 20; }
             }
             CargarIni();
             CargarEstado();
@@ -175,6 +175,9 @@ namespace VidaNikoMod
                         "MinutosVejiga = 75",
                         "; humo del cigarrillo (0 si el juego se cierra al fumar)",
                         "Humo = 1",
+                        "; tambalear al recibir 2 disparos seguidos y caer con 3 (1 si, 0 no)",
+                        "Tambaleo = 1",
+                        "TambaleoEnMisiones = 1",
                     });
                     return;
                 }
@@ -196,6 +199,8 @@ namespace VidaNikoMod
                     else if (k == "minutossed") minutosSed = Math.Max(5f, v);
                     else if (k == "minutosvejiga") minutosVejiga = Math.Max(5f, v);
                     else if (k == "humo") humo = v != 0;
+                    else if (k == "tambaleo") tambaleo = v != 0;
+                    else if (k == "tambaleoenmisiones") tambaleoMisiones = v != 0;
                 }
             }
             catch { }
@@ -382,10 +387,12 @@ namespace VidaNikoMod
         void Control(bool on) { try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), on); } catch { } }
         void Lento(bool on) { try { Function.Call("SET_TIME_SCALE", on ? 0.25f : 1.0f); } catch { } }
 
+        // animacion de cuerpo entero (curarse con gasa, ir de cuerpo, tambalear)
         void Anim(Ped p, string set, string nombre, bool loop)
         {
             try
             {
+                if (!AnimLista(set)) Function.Call("REQUEST_ANIMS", set);
                 AnimationSet s;
                 if (!sets.TryGetValue(set, out s)) { s = new AnimationSet(set); sets[set] = s; }
                 p.Task.PlayAnimation(s, nombre, 8f, loop ? AnimationFlags.Unknown05 : AnimationFlags.None);
@@ -393,26 +400,74 @@ namespace VidaNikoMod
             catch { }
         }
 
-        // ---- objetos en la mano (modelos del propio juego, posicion en scripts\Props.ini) ----
-        const string ArchivoProps = "scripts\\Props.ini";
-        static readonly string[] PropsDefecto = {
-            "; Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
-            "; Se relee cada vez que usas un objeto: podes ajustar con el juego abierto.",
-            "BM_CHAR_FAG = 0.02, 0.01, 0.00 | 0, 0, 0",
-            "AMB_BURG = 0.08, 0.02, -0.02 | 0, 0, 0",
-            "AMB_HOTDOG = 0.08, 0.02, -0.02 | 0, 0, 0",
-            "AMB_CHOCBAR = 0.07, 0.02, -0.02 | 0, 0, 0",
-            "AMB_JUICE_BOT = 0.07, 0.03, -0.05 | 0, 0, 0",
-            "AMB_CAN_DRINK_1 = 0.07, 0.03, -0.03 | 0, 0, 0",
-            "AMB_WINE = 0.07, 0.03, -0.05 | 0, 0, 0",
-        };
-
-        void LeerProp(string modelo, out Vector3 pos, out Vector3 rot)
+        // animacion solo de la cintura para arriba: Niko puede caminar mientras come, toma o fuma
+        string arribaSet, arribaClip;
+        void Arriba(Ped p, string set, string clip, bool loop, int ms)
         {
-            pos = new Vector3(0.07f, 0.02f, -0.02f); rot = new Vector3(0f, 0f, 0f);
             try
             {
-                if (!File.Exists(ArchivoProps)) File.WriteAllLines(ArchivoProps, PropsDefecto);
+                if (!AnimLista(set)) Function.Call("REQUEST_ANIMS", set);
+                Function.Call("TASK_PLAY_ANIM_SECONDARY_UPPER_BODY", p, clip, set, 4.0f, loop ? 1 : 0, 0, 0, 0, loop ? -2 : ms);
+                arribaSet = set; arribaClip = clip;
+            }
+            catch { }
+        }
+
+        void CortarArriba(Ped p)
+        {
+            if (arribaSet == null) return;
+            try { Function.Call("TASK_PLAY_ANIM_SECONDARY_UPPER_BODY", p, arribaClip, arribaSet, 8.0f, 0, 0, 0, 0, 1); } catch { }
+            arribaSet = null; arribaClip = null;
+        }
+
+        static bool AnimLista(string set)
+        {
+            try { return Function.Call<bool>("HAVE_ANIMS_LOADED", set); } catch { return true; }
+        }
+
+        // se piden al juego con tiempo para que esten cargadas cuando se usan
+        static readonly string[] SetsUsados = {
+            "amb@nightclub_ext", "amb@smk_scn_idles", "amb@burger_idle", "amb@hotdog_idle", "amb@eat_chocolate",
+            "amb@drink_bottle", "amb@drink_can", "amb@cafe_eat_idles", "amb@bnch_eat_idl", "amb@beg_standing",
+            "cop_search_idles", "amb@hotdog_hold", "move_m@cower", "amb@yawn", "playidles_tired_1h",
+            "dam_rec_player", "amb@burgercart", "amb@ffood_server" };
+        int proximaCarga;
+        void PrecargarAnims(int now)
+        {
+            if (now < proximaCarga) return;
+            proximaCarga = now + 2000;
+            foreach (string set in SetsUsados) { try { if (!AnimLista(set)) Function.Call("REQUEST_ANIMS", set); } catch { } }
+        }
+
+        bool Moviendose()
+        {
+            return Down(VK_W) || Down(0x41) || Down(0x53) || Down(0x44) || Down(0x20);
+        }
+
+        // ---- objetos en la mano (modelos del propio juego, posicion en scripts\Props.ini) ----
+        // valores probados del Smoking Mod (hueso 1232 = mano derecha, 1205 = cabeza)
+        const string ArchivoProps = "scripts\\Props.ini";
+        static readonly string[] PropsDefecto = {
+            "; v2 - Posicion de cada objeto en la mano derecha de Niko: MODELO = x, y, z | rotX, rotY, rotZ",
+            "; Se relee cada vez que usas un objeto: podes ajustar con el juego abierto.",
+            "BM_CHAR_FAG_F = 0.015, -0.005, -0.021 | 0, 0, 0",
+            "AMB_BURG = -0.05, 0.0, 0.035 | 0, 0, 0",
+            "AMB_HOTDOG = -0.05, 0.0, 0.035 | 0, 0, 0",
+            "AMB_CHOCBAR = 0, 0, 0 | 0, 0, 0",
+            "AMB_JUICE_BOT = 0, 0, 0 | 0, 0, 0",
+            "AMB_CAN_DRINK_1 = 0, 0, 0 | 0, 0, 0",
+            "AMB_WINE = 0, 0, 0 | 0, 0, 0",
+            "; chorro al orinar (hueso de la pelvis): x, y, z | rotX, rotY, rotZ | tamano",
+            "CHORRO = 0.0, 0.18, -0.05 | 0, 0, 0 | 0.35",
+        };
+
+        bool LeerProp(string modelo, out Vector3 pos, out Vector3 rot, out float escala)
+        {
+            pos = new Vector3(0f, 0f, 0f); rot = new Vector3(0f, 0f, 0f); escala = 1f;
+            bool hay = false;
+            try
+            {
+                if (!File.Exists(ArchivoProps) || File.ReadAllText(ArchivoProps).IndexOf("; v2") < 0) File.WriteAllLines(ArchivoProps, PropsDefecto);
                 foreach (string raw in File.ReadAllLines(ArchivoProps))
                 {
                     string l = raw.Trim();
@@ -422,31 +477,75 @@ namespace VidaNikoMod
                     string[] a = p[0].Split(',');
                     if (a.Length >= 3) pos = new Vector3(F(a[0], 0), F(a[1], 0), F(a[2], 0));
                     if (p.Length > 1) { string[] b = p[1].Split(','); if (b.Length >= 3) rot = new Vector3(F(b[0], 0), F(b[1], 0), F(b[2], 0)); }
+                    if (p.Length > 2) escala = F(p[2], 1f);
+                    hay = true;
                 }
             }
             catch { }
+            return hay;
         }
 
+        // el modelo se pide al juego y se crea recien cuando esta cargado (sino no aparece)
+        string propPendiente; int propLimite;
         void PonerProp(Ped me, string modelo)
         {
             QuitarProp();
             if (modelo == null) return;
+            propPendiente = modelo; propLimite = Game.GameTime + 3000;
+            TickProp(me);
+        }
+
+        void TickProp(Ped me)
+        {
+            if (propPendiente == null) return;
             try
             {
-                Vector3 pos, rot;
-                LeerProp(modelo, out pos, out rot);
-                prop = World.CreateObject(new Model(modelo), me.Position + new Vector3(0f, 0f, -5f));
-                if (prop != null && Game.Exists(prop)) prop.AttachToPed(me, Bone.RightHand, pos, rot);
+                Model m = new Model(propPendiente);
+                if (!Function.Call<bool>("HAS_MODEL_LOADED", m.Hash))
+                {
+                    Function.Call("REQUEST_MODEL", m.Hash);
+                    if (Game.GameTime > propLimite) propPendiente = null;
+                    return;
+                }
+                Vector3 pos, rot; float esc;
+                LeerProp(propPendiente, out pos, out rot, out esc);
+                prop = World.CreateObject(m, me.Position + new Vector3(0f, 0f, -5f));
+                if (prop != null && Game.Exists(prop))
+                {
+                    Function.Call("ATTACH_OBJECT_TO_PED", prop, me, 1232, pos.X, pos.Y, pos.Z, rot.X, rot.Y, rot.Z, 0);
+                    if (accion == 5 && humo) { try { ptfx = Function.Call<int>("START_PTFX_ON_OBJ", "ambient_cig_smoke", prop, 0.125f, -0.02f, 0.01f, 0f, 0f, 0f, 1.1f); } catch { ptfx = -1; } }
+                }
             }
             catch { prop = null; }
+            propPendiente = null;
         }
 
         void QuitarProp()
         {
+            propPendiente = null;
             if (ptfx >= 0) { try { Function.Call("STOP_PTFX", ptfx); } catch { } ptfx = -1; }
             if (prop == null) return;
-            try { if (Game.Exists(prop)) { prop.Detach(); prop.Delete(); } } catch { }
+            try { if (Game.Exists(prop)) { Function.Call("DETACH_OBJECT", prop, false); prop.Delete(); } } catch { }
             prop = null;
+        }
+
+        // chorro de agua (el de la regadera del juego) saliendo de la pelvis
+        int chorro = -1;
+        void PonerChorro(Ped me)
+        {
+            QuitarChorro();
+            try
+            {
+                Vector3 pos, rot; float esc;
+                LeerProp("CHORRO", out pos, out rot, out esc);
+                chorro = Function.Call<int>("START_PTFX_ON_PED_BONE", "anim_watering_can", me, pos.X, pos.Y, pos.Z, rot.X, rot.Y, rot.Z, 417, esc);
+            }
+            catch { chorro = -1; }
+        }
+
+        void QuitarChorro()
+        {
+            if (chorro >= 0) { try { Function.Call("STOP_PTFX", chorro); } catch { } chorro = -1; }
         }
 
         // la persona mas cerca adelante de Niko (el que atiende detras del mostrador)
@@ -502,13 +601,40 @@ namespace VidaNikoMod
             vidaAnterior = v;
         }
 
+        // 2 golpes seguidos: tambalea. 3 o un golpe muy fuerte: se va al piso un momento y se levanta.
+        bool tambaleo = true, tambaleoMisiones = true;
+        int blindajeAnterior = -1, golpe1, golpe2, proximoTambaleo;
+        void Golpe(Ped me, int now, int dano)
+        {
+            bool enAuto = false;
+            try { enAuto = me.isInVehicle(); } catch { }
+            if (enAuto || now < proximoTambaleo) { golpe2 = golpe1; golpe1 = now; return; }
+            int seguidos = 1;
+            if (now - golpe1 < 1500) seguidos++;
+            if (now - golpe2 < 2000) seguidos++;
+            golpe2 = golpe1; golpe1 = now;
+            if (seguidos >= 3 || dano >= 40)
+            {
+                proximoTambaleo = now + 4000;
+                if (accion != 0) TerminarAccion(me, true);
+                if (sentado != 0) Pararse(me);
+                try { me.ForceRagdoll(1400, false); } catch { }
+            }
+            else if (seguidos == 2)
+            {
+                proximoTambaleo = now + 1500;
+                string[] r = { "chest", "head_front", "back_upper" };
+                Anim(me, "dam_rec_player", r[now % 3], false);
+            }
+        }
+
         void Reiniciar()
         {
             bool habiaMenu = tienda || rueda || sentado != 0 || regMenu || guantera || saludoFase != 0;
             if (rueda) Lento(false);
             if (habiaMenu) Control(true);
             if (accion == 3) Fundido(false);
-            QuitarProp(); fumarFase = 0; regMenu = false;
+            QuitarProp(); QuitarChorro(); fumarFase = 0; regMenu = false;
             guantera = false; saludoFase = 0; empleado = null;
             rueda = false; tienda = false; sentado = 0; accion = 0; jeringaHasta = 0;
         }
@@ -550,6 +676,15 @@ namespace VidaNikoMod
                     else { hambre = Math.Min(100f, hambre + 40f * m); sed = Math.Min(100f, sed + 10f * m); intestino = Math.Min(100f, intestino + 15f); Aviso("Comiste: hambre " + (int)hambre + "%"); }
                 }
             }
+            // ---- tambalear con los disparos ----
+            int blindaje = 0;
+            try { blindaje = me.Armor; } catch { }
+            if (tambaleo && vidaAnterior >= 0 && blindajeAnterior >= 0)
+            {
+                int dano = (vidaAnterior - vida) + (blindajeAnterior - blindaje);
+                if (dano >= 5 && !(mision && !tambaleoMisiones)) Golpe(me, now, dano);
+            }
+            blindajeAnterior = blindaje;
             vidaAnterior = vida;
 
             // ---- necesidades ----
@@ -595,6 +730,7 @@ namespace VidaNikoMod
             bool cansado = necesidades && (hambre < 10f || sed < 10f);
             try { Function.Call("DISABLE_PLAYER_SPRINT", PlayerId(), critico || cansado); } catch { }
 
+            PrecargarAnims(now);
             TickAcciones(me, now, vida);
 
             DibujarHud(pct, critico);
@@ -620,7 +756,7 @@ namespace VidaNikoMod
 
         void Usar(Ped me, int i, int vida, int now)
         {
-            if (i < 0) { Aviso("No tenes nada para curarte (compra en farmacias o estaciones)"); return; }
+            if (i < 0) { Aviso("No tenes nada para curarte (compra en una farmacia)"); return; }
             Obj o = objs[i];
             if (o.Tengo <= 0) { Aviso("No tenes " + o.Nombre.ToLowerInvariant()); return; }
             if (o.Tipo == 0 && vida >= vidaMax && !(i == GASA && sangrando)) { Aviso("No estas herido"); return; }
@@ -628,24 +764,22 @@ namespace VidaNikoMod
             {
                 if (sentado != 0) { Aviso("Parate para fumar"); return; }
                 o.Tengo--;
-                accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 4500; accionDur = 4500;
-                try { me.Task.ClearAllImmediately(); } catch { }
-                Anim(me, "amb@smoking_create", "stand_create", false);
+                accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 3500; accionDur = 3500;
+                Arriba(me, "amb@nightclub_ext", "smoke_light_up", false, 3500);
                 PonerProp(me, o.Prop);
                 return;
             }
             o.Tengo--;
             accion = 1; accionObj = i; accionFin = now + o.Ms; accionDur = o.Ms;
-            if (sentado == 2)
+            if (i == GASA && sentado == 0)
             {
-                if (o.SetSentado != null) { Anim(me, o.SetSentado, o.ClipSentado, true); PonerProp(me, o.Prop); }
+                // la gasa es de cuerpo entero (se agacha); si te moves se corta
+                Anim(me, o.Set, o.Clip, false);
+                return;
             }
-            else if (sentado == 0)
-            {
-                try { me.Task.ClearAllImmediately(); } catch { }
-                Anim(me, o.Set, o.Clip, o.Tipo != 0);
-                PonerProp(me, o.Prop);
-            }
+            if (sentado == 2 && o.SetSentado != null) Arriba(me, o.SetSentado, o.ClipSentado, true, 0);
+            else Arriba(me, o.Set, o.Clip, o.Tipo != 0, o.Ms);
+            PonerProp(me, o.Prop);
         }
 
         void TerminarUso(Ped me, int vida)
@@ -738,51 +872,93 @@ namespace VidaNikoMod
         }
 
         // ================= fumar (estilo RDR) =================
-        // fase 1 lo saca y lo prende, 2 fuma (U o caminar para tirarlo), 3 lo tira
+        // fase 1 lo prende, 2 fuma (podes caminar; U para apagarlo), 3 lo apaga
+        int proximoHumo;
         void TickFumar(Ped me, int now, int vida, bool aPie, bool uPress)
         {
-            bool camina = Down(VK_W) || Down(0x41) || Down(0x53) || Down(0x44);
-            if (!aPie || (camina && fumarFase != 3)) { TerminarFumar(fumarFase >= 2); try { if (aPie) me.Task.ClearAll(); } catch { } return; }
+            TickProp(me);
+            if (!aPie) { TerminarFumar(me, fumarFase >= 2); return; }
             if (fumarFase == 1 && now >= accionFin)
             {
-                fumarFase = 2; fumarHasta = now + 22000; proximaPitada = now + 5000;
-                accionFin = fumarHasta; accionDur = 22000;
-                Anim(me, "amb@smoking", "stand_smoke", true);
-                if (humo && prop != null) { try { ptfx = Function.Call<int>("START_PTFX_ON_OBJ", "ambient_cig_smoke", prop, 0.04f, 0f, 0f, 0f, 0f, 0f, 1.0f); } catch { ptfx = -1; } }
+                fumarFase = 2; fumarHasta = now + 25000; proximaPitada = now + 5000; proximoHumo = now + 3000;
+                accionFin = fumarHasta; accionDur = 25000;
+                Arriba(me, "amb@smk_scn_idles", "stand_smoke", true, 0);
             }
             else if (fumarFase == 2)
             {
                 if (now >= proximaPitada) { proximaPitada = now + 5000; if (vida < vidaMax) SetVida(me, vida + 1); }
+                if (humo && now >= proximoHumo)
+                {
+                    proximoHumo = now + 6000;
+                    try { Function.Call("TRIGGER_PTFX_ON_PED_BONE", "ped_smoke_exhale", me, 0f, 0f, 0f, 0f, 0f, 0f, 1205, 1.1f); } catch { }
+                }
                 if (uPress || now >= fumarHasta)
                 {
-                    fumarFase = 3; accionFin = now + 2500; accionDur = 2500;
-                    Anim(me, "amb@smoking_destroy", "walk_destroy", false);
+                    fumarFase = 3; accionFin = now + 2000; accionDur = 2000;
+                    Arriba(me, "amb@nightclub_ext", "smoke_stub_out", false, 2000);
                 }
             }
-            else if (fumarFase == 3 && now >= accionFin) { TerminarFumar(true); try { me.Task.ClearAll(); } catch { } }
+            else if (fumarFase == 3 && now >= accionFin) TerminarFumar(me, true);
+            if (now > accionFin + 4000) TerminarFumar(me, fumarFase >= 2);   // por si algo se traba
         }
 
-        void TerminarFumar(bool fumo)
+        void TerminarFumar(Ped me, bool fumo)
         {
             QuitarProp();
+            CortarArriba(me);
             if (fumo) { hambre = Math.Min(100f, hambre + 10f); Aviso("Fumaste un cigarrillo. Te quedan " + objs[accionObj].Tengo); }
             fumarFase = 0; accion = 0;
         }
 
+        void TerminarAccion(Ped me, bool cuerpoEntero)
+        {
+            if (accion == 3) Fundido(false);
+            QuitarChorro();
+            QuitarProp();
+            CortarArriba(me);
+            if (cuerpoEntero) { try { me.Task.ClearAll(); } catch { } }
+            accion = 0;
+        }
+
         // ================= sentarse =================
+        // Usa los asientos del propio juego (bancos, sillas, escalones), como el Sitting Mod de Aru.
+        bool SentadoAhora(Ped me)
+        {
+            try { return Function.Call<bool>("IS_CHAR_SITTING_IDLE", me); } catch { return false; }
+        }
+
+        void Sentarse(Ped me, int now)
+        {
+            Vector3 p = me.Position;
+            bool hay = false;
+            try { hay = Function.Call<bool>("IS_SITTING_OBJECT_NEAR", p.X, p.Y, p.Z, 0); } catch { }
+            if (!hay) { Aviso("No hay donde sentarse aca (acercate a un banco o una silla)"); return; }
+            try
+            {
+                Function.Call("TASK_SIT_DOWN_ON_NEAREST_OBJECT", me, 2, 0, p.X, p.Y, p.Z, 0, 0f, -2, 0);
+                sentado = 1; sentadoFase = now + 8000;
+            }
+            catch { }
+        }
+
+        void Pararse(Ped me)
+        {
+            try { Function.Call("CLEAR_CHAR_TASKS", me); } catch { }
+            sentado = 0;
+        }
+
         void TickSentado(Ped me, int now, bool z)
         {
-            if (sentado == 1 && now >= sentadoFase) { sentado = 2; Anim(me, "amb_sit_chair_m", "sit_down_idle_01", true); }
-            else if (sentado == 2 && (z || Down(VK_W)))
+            bool sentadoJuego = SentadoAhora(me);
+            if (sentado == 1)
             {
-                sentado = 3; sentadoFase = now + 1800;
-                Anim(me, "amb_sit_chair_m", "get_up_front", false);
+                if (sentadoJuego) sentado = 2;
+                else if (now > sentadoFase || z || Moviendose()) Pararse(me);   // no llego al asiento
             }
-            else if (sentado == 3 && now >= sentadoFase)
+            else if (sentado == 2)
             {
-                sentado = 0;
-                try { me.Task.ClearAll(); } catch { }
-                Control(true);
+                if (!sentadoJuego && accion == 0) sentado = 0;                  // se paro solo
+                else if (z || Down(VK_W)) { if (accion == 1) { CortarArriba(me); QuitarProp(); accion = 0; } Pararse(me); }
             }
         }
 
@@ -812,20 +988,26 @@ namespace VidaNikoMod
             if (enMiAuto && accion == 0) { TickGuantera(me, uPress); return; }
 
             // accion en curso (comer, curarse, orinar)
+            if (sentado != 0) TickSentado(me, now, z && accion != 5);
             if (accion == 5) { TickFumar(me, now, vida, aPie, uPress); return; }
             if (accion != 0)
             {
-                if (!aPie) { if (accion == 3) Fundido(false); QuitarProp(); accion = 0; return; }
+                TickProp(me);
+                bool cuerpoEntero = accion == 3 || (accion == 1 && accionObj == GASA && sentado == 0);
+                bool cortar = !aPie || now > accionFin + 4000 || ((cuerpoEntero || accion == 2) && Moviendose());
+                if (cortar)
+                {
+                    // te moviste o algo se trabo: se corta sin efecto (el objeto se devuelve)
+                    if (accion == 1 && accionObj >= 0 && now < accionFin) objs[accionObj].Tengo++;
+                    TerminarAccion(me, cuerpoEntero);
+                    return;
+                }
                 if (now >= accionFin)
                 {
                     if (accion == 1) TerminarUso(me, vida);
                     else if (accion == 2) { vejiga = 0f; DarBonus(1.25f, 10); Aviso("Que alivio. Hiciste lugar: la comida te llena mas por 10 min"); }
-                    else if (accion == 3) { intestino = 0f; vejiga = Math.Max(0f, vejiga - 40f); DarBonus(1.5f, 15); Fundido(false); Aviso("Liberado. Hiciste lugar: la comida te llena mucho mas por 15 min"); }
-                    bool gesto = accion == 4;
-                    accion = 0;
-                    QuitarProp();
-                    if (sentado == 0 && !gesto) { try { me.Task.ClearAll(); } catch { } }
-                    else if (sentado == 2) Anim(me, "amb_sit_chair_m", "sit_down_idle_01", true);
+                    else if (accion == 3) { intestino = 0f; vejiga = Math.Max(0f, vejiga - 40f); DarBonus(1.5f, 15); Aviso("Liberado. Hiciste lugar: la comida te llena mucho mas por 15 min"); }
+                    TerminarAccion(me, cuerpoEntero);
                 }
                 return;
             }
@@ -909,7 +1091,7 @@ namespace VidaNikoMod
                 if (uRelease || !aPie)
                 {
                     rueda = false; Lento(false);
-                    if (sentado == 0) Control(true);
+                    Control(true);
                     if (ruedaSel >= 0 && aPie) Usar(me, ruedaSel, vida, now);
                 }
                 uDesde = 0;
@@ -923,17 +1105,9 @@ namespace VidaNikoMod
             }
 
             // ---- sentado ----
-            if (sentado != 0) { TickSentado(me, now, z); return; }
+            if (sentado != 0) return;
             if (!aPie) return;
-
-            if (z)
-            {
-                sentado = 1; sentadoFase = now + 2200;
-                try { me.Task.ClearAllImmediately(); } catch { }
-                Control(false);
-                Anim(me, "amb_sit_chair_m", "sit_down_front", false);
-                return;
-            }
+            if (z) { Sentarse(me, now); return; }
 
             // ---- tienda cercana ----
             // estaciones: autoservicio. Farmacias, restaurantes y almacenes: hay que hablar con el empleado (E)
@@ -962,9 +1136,9 @@ namespace VidaNikoMod
                 if (vejiga < 15f) Aviso("No tenes ganas de orinar");
                 else
                 {
-                    accion = 2; accionFin = now + 6000; accionDur = 6000;
-                    try { me.Task.ClearAllImmediately(); } catch { }
-                    Anim(me, "amb@bouncer_idles_b", "lookaround_a", true);
+                    accion = 2; accionFin = now + 7000; accionDur = 7000;
+                    Arriba(me, "amb@hotdog_hold", "hold_stand", true, 0);
+                    PonerChorro(me);
                 }
             }
             else if (nTipo == 2 && necesidades)
@@ -973,7 +1147,6 @@ namespace VidaNikoMod
                 else
                 {
                     accion = 3; accionFin = now + 9000; accionDur = 9000;
-                    try { me.Task.ClearAllImmediately(); } catch { }
                     Anim(me, "move_m@cower", "idle", true);
                     Fundido(true);
                 }
@@ -988,9 +1161,9 @@ namespace VidaNikoMod
                 try { vel = Function.Call<float>("GET_CHAR_SPEED", me); } catch { }
                 if (vel < 0.5f && !mision && Player.WantedLevel == 0 && !Down(0x02))
                 {
-                    accion = 4; accionFin = now + 3500; accionDur = 3500;
-                    if (sed < hambre) { Anim(me, "amb@yawn", "yawn", false); Aviso("Niko tiene la boca seca..."); }
-                    else { Anim(me, "playidles_tired_1h", "heavy_breathing", false); Aviso("A Niko le ruge la panza..."); }
+                    // gesto de la cintura para arriba: no frena a Niko
+                    if (sed < hambre) { Arriba(me, "amb@yawn", "yawn", false, 3000); Aviso("Niko tiene la boca seca..."); }
+                    else { Arriba(me, "playidles_tired_1h", "heavy_breathing", false, 3000); Aviso("A Niko le ruge la panza..."); }
                 }
             }
 
@@ -1030,7 +1203,7 @@ namespace VidaNikoMod
                 IV.Progreso(t, Avance(now));
             }
             if (accion == 2) IV.Progreso("Orinando", Avance(now));
-            if (accion == 5 && fumarFase == 2) Ayuda("Apreta U o camina para tirar el cigarrillo.");
+            if (accion == 5 && fumarFase == 2) Ayuda("Podes caminar fumando. Apreta U para apagar el cigarrillo.");
             if (accion == 3) IV.Texto("Niko esta ocupado...", 0.5f, 0.47f, 0.42f, IV.BlancoPuro, 255, 1);
         }
 
