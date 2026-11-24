@@ -323,7 +323,17 @@ namespace VidaNikoMod
 
         void PonerBlip(Lugar g)
         {
-            try { g.B = Blip.AddBlip(g.Pos); g.B.Name = NombreTipo(g.Tipo); g.B.ShowOnlyWhenNear = false; } catch { }
+            // iconos del juego, chicos y solo cerca (como las tiendas normales, no como misiones)
+            try
+            {
+                g.B = Blip.AddBlip(g.Pos);
+                g.B.Icon = g.Tipo == "FARMACIA" ? BlipIcon.Pickup_Health : g.Tipo == "ALMACEN" ? BlipIcon.Misc_Deal : BlipIcon.Activity_Restaurant;
+                g.B.Color = BlipColor.White;
+                g.B.Name = NombreTipo(g.Tipo);
+                g.B.ShowOnlyWhenNear = true;
+                g.B.Scale = 0.8f;
+            }
+            catch { }
         }
 
         static string NombreTipo(string tipo)
@@ -363,7 +373,7 @@ namespace VidaNikoMod
             for (int i = 0; i < objs.Length; i++)
             {
                 Obj o = objs[i];
-                if (g.Tipo == "ESTACION") r.Add(i);
+                if (g.Tipo == "ESTACION") { if (o.Tipo != 0) r.Add(i); }
                 else if (g.Tipo == "FARMACIA" && (o.Tipo == 0 || o.Nombre == "Agua")) r.Add(i);
                 else if (g.Tipo == "RESTAURANTE" && (o.Tipo == 1 || o.Tipo == 2)) r.Add(i);
                 else if (g.Tipo == "ALMACEN" && (o.Tipo != 0 || i == ANALGESICO) && o.Nombre != "Hamburguesa") r.Add(i);
@@ -384,6 +394,19 @@ namespace VidaNikoMod
         void Aviso(string s) { aviso = s; avisoHasta = Game.GameTime + 4500; }
         int PlayerId() { try { return Function.Call<int>("GET_PLAYER_ID"); } catch { return 0; } }
         bool EnMision() { try { return Function.Call<bool>("GET_MISSION_FLAG"); } catch { return false; } }
+        bool EnCinematica()
+        {
+            try
+            {
+                if (Function.Call<bool>("HAS_CUTSCENE_LOADED") && !Function.Call<bool>("HAS_CUTSCENE_FINISHED")) return true;
+                if (accion != 3 && (Function.Call<bool>("IS_SCREEN_FADED_OUT") || Function.Call<bool>("IS_SCREEN_FADING_OUT"))) return true;
+                bool nuestro = tienda || rueda || regMenu || guantera || sentado != 0 || saludoFase != 0;
+                if (!nuestro && !Function.Call<bool>("IS_PLAYER_CONTROL_ON", PlayerId())) return true;
+            }
+            catch { }
+            return false;
+        }
+
         void Control(bool on) { try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), on); } catch { } }
         void Lento(bool on) { try { Function.Call("SET_TIME_SCALE", on ? 0.25f : 1.0f); } catch { } }
 
@@ -738,7 +761,7 @@ namespace VidaNikoMod
             if (regMenu) DibujarRegistro();
             if (guantera) DibujarGuantera();
             if (rueda) DibujarRueda();
-            if (now < avisoHasta && aviso != null) DibujarAviso();
+            if (now < avisoHasta && aviso != null && !EnCinematica()) DibujarAviso();
 
             if (now >= proximoGuardado) { proximoGuardado = now + 15000; GuardarEstado(); }
         }
@@ -1180,9 +1203,9 @@ namespace VidaNikoMod
         void DibujarHud(int pct, bool critico)
         {
             int now = Game.GameTime;
-            bool mostrar = accion == 1 || accion == 2 || critico || sangrando || rueda || now < jeringaHasta || now < bonusHasta ||
-                           (necesidades && (hambre < 50f || sed < 50f || vejiga > 60f || intestino > 60f));
-            if (mostrar)
+            // el estado de Niko solo se ve con la rueda (mantener U); nada en cinematicas
+            bool cine = EnCinematica();
+            if (rueda && !cine)
             {
                 float x = 0.86f, w = 0.085f, y = 0.915f;
                 if (necesidades)
@@ -1195,6 +1218,7 @@ namespace VidaNikoMod
                 if (salud) { IV.Barra(sangrando ? "SANGRANDO" : "SALUD", pct, x, y, w, IV.VerdeClaro, critico || sangrando); y -= 0.021f; }
                 if (now < bonusHasta) IV.Texto("LUGAR EXTRA  x" + bonusComida.ToString("0.00", CultureInfo.InvariantCulture), x, y - 0.006f, 0.21f, IV.VerdeClaro, 255, 0);
             }
+            if (cine) return;
             if (sangrando && !rueda && !tienda && accion == 0) Ayuda("Te estas desangrando. Apreta U para ponerte una gasa (" + objs[GASA].Tengo + ").");
             if (accion == 1 && accionObj >= 0)
             {

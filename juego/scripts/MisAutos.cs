@@ -209,7 +209,16 @@ namespace MisAutosMod
             catch { }
             foreach (Estacion e in estaciones)
             {
-                try { e.B = Blip.AddBlip(e.Pos); e.B.Name = "Estacion de servicio"; e.B.ShowOnlyWhenNear = true; } catch { }
+                try
+                {
+                    e.B = Blip.AddBlip(e.Pos);
+                    e.B.Icon = BlipIcon.Building_Garage;
+                    e.B.Color = BlipColor.White;
+                    e.B.Name = "Estacion de servicio";
+                    e.B.ShowOnlyWhenNear = true;
+                    e.B.Scale = 0.8f;
+                }
+                catch { }
             }
         }
 
