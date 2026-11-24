@@ -6,7 +6,7 @@
 //   El auto activo no desaparece, tiene icono en el mapa y se acuerda de su nafta.
 //
 // BAUL (solo tu auto activo)
-//   Parate atras del auto y apreta E: se abre el baul y podes guardar o sacar armas
+//   Apreta E cerca de tu auto, elegi 'Abrir baul' (parado atras del auto) y podes guardar o sacar armas
 //   (flechas izq/der para cambiar de lado, arriba/abajo para elegir, Enter para mover, E para cerrar).
 //
 // NAFTA
@@ -456,7 +456,6 @@ namespace MisAutosMod
 
             if (baul) { TickBaul(me, now); DibujarBaul(); }
             else if (naftaActiva) TickNafta(me, now, dt);
-            if (!baul && !menu && !menuNafta && carga == 0) ChequearBaul(me, now);
 
             // menu de autos
             bool l = Pressed(VK_L);
@@ -581,21 +580,12 @@ namespace MisAutosMod
 
             if (carga == 0)
             {
-                if (!teclaE || EnZonaBaul(me)) return;   // detras del auto, E abre el baul
-                Estacion est = EstacionCerca(me.Position);
-                Vehicle v = AutoCerca(me);
-                Tanque t = v != null ? TanqueDe(v) : null;
-                if (est != null)
+                if (!teclaE) return;
+                if (EstacionCerca(me.Position) != null || AutoCerca(me) != null || EnZonaBaul(me))
                 {
                     menuNafta = true;
-                    selNafta = t != null ? 0 : 1;
+                    selNafta = 0;
                     try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), false); } catch { }
-                }
-                else if (t != null)
-                {
-                    if (bidones <= 0) Aviso("No tenes bidones");
-                    else if (t.L >= t.Cap * 0.6f) Aviso("Al tanque todavia le queda bastante nafta");
-                    else EmpezarCarga(me, t, null, true, now);
                 }
                 return;
             }
@@ -658,34 +648,75 @@ namespace MisAutosMod
             Estacion est = EstacionCerca(me.Position);
             Vehicle v = AutoCerca(me);
             Tanque t = v != null ? TanqueDe(v) : null;
+            bool zona = EnZonaBaul(me);
             bool up = Pressed(VK_UP), down = Pressed(VK_DOWN), enter = Pressed(VK_ENTER), back = Pressed(VK_BACK);
-            if (est == null || !me.isAliveAndWell || me.isInVehicle() || back || teclaE) { CerrarMenuNafta(); return; }
-            if (up || down) selNafta = 1 - selNafta;
+            if ((est == null && t == null && !zona) || !me.isAliveAndWell || me.isInVehicle() || back || teclaE) { CerrarMenuNafta(); return; }
+
+            // opciones segun lo que tengas cerca: 0 cargar, 1 comprar bidon, 2 usar bidon, 3 baul
+            List<int> ids = new List<int>();
+            if (est != null) { ids.Add(0); ids.Add(1); }
+            if (t != null) ids.Add(2);
+            bool hayActivo = false;
+            try { hayActivo = activo != null && activoIdx >= 0 && activoIdx < autos.Count && Game.Exists(activo) && activo.Position.DistanceTo(me.Position) < 7f; } catch { }
+            if (hayActivo) ids.Add(3);
+            if (ids.Count == 0) { CerrarMenuNafta(); return; }
+            if (selNafta >= ids.Count) selNafta = ids.Count - 1;
+            if (up) selNafta = (selNafta + ids.Count - 1) % ids.Count;
+            if (down) selNafta = (selNafta + 1) % ids.Count;
+            int id = ids[selNafta];
+
             if (enter)
             {
-                if (selNafta == 0)
+                if (id == 0)
                 {
                     if (t == null) Aviso("Acercate a tu auto para cargar nafta");
                     else if (t.L >= t.Cap - 0.2f) Aviso("El tanque ya esta lleno");
                     else { CerrarMenuNafta(); EmpezarCarga(me, t, est, false, now); return; }
                 }
-                else
+                else if (id == 1)
                 {
                     if (bidones >= maxBidones) Aviso("Ya tenes " + bidones + " bidones (maximo " + maxBidones + ")");
                     else if (Player.Money < (int)precioBidon) Aviso("No te alcanza para un bidon ($" + (int)precioBidon + ")");
                     else { Player.Money = Player.Money - (int)precioBidon; bidones++; sucio = true; Aviso("Compraste un bidon (" + bidones + "/" + maxBidones + ")"); }
                 }
+                else if (id == 2)
+                {
+                    if (bidones <= 0) Aviso("No tenes bidones");
+                    else if (t.L >= t.Cap - 0.5f) Aviso("El tanque ya esta lleno");
+                    else { CerrarMenuNafta(); EmpezarCarga(me, t, null, true, now); return; }
+                }
+                else
+                {
+                    if (!zona) Aviso("Ponete atras de tu auto para abrir el baul");
+                    else { CerrarMenuNafta(); AbrirBaul(me); return; }
+                }
             }
+
             float x = 0.03f, y = 0.16f, w = 0.3f;
-            IV.Titulo("Estacion de servicio", x, y, w);
+            IV.Titulo(est != null ? "Estacion de servicio" : "Tu auto", x, y, w);
             y += 0.045f;
-            string der = t != null
-                ? "$" + est.Precio.ToString("0.00", CultureInfo.InvariantCulture) + "/L   tanque " + (int)(t.L * 100f / t.Cap) + "%"
-                : "sin auto cerca";
-            IV.Item("Cargar nafta", der, x, y, w, selNafta == 0, t == null, 0.1f);
-            y += IV.Fila;
-            IV.Item("Comprar bidon", "$" + (int)precioBidon + "   (" + bidones + "/" + maxBidones + ")", x, y, w, selNafta == 1, false, 0.1f);
-            y += IV.Fila;
+            for (int i = 0; i < ids.Count; i++)
+            {
+                string izq = "", der = null;
+                bool apagado = false;
+                int k = ids[i];
+                if (k == 0)
+                {
+                    izq = "Cargar nafta";
+                    if (t != null) der = "$" + est.Precio.ToString("0.00", CultureInfo.InvariantCulture) + "/L   tanque " + (int)(t.L * 100f / t.Cap) + "%";
+                    else { der = "sin auto cerca"; apagado = true; }
+                }
+                else if (k == 1) { izq = "Comprar bidon"; der = "$" + (int)precioBidon + "   (" + bidones + "/" + maxBidones + ")"; }
+                else if (k == 2) { izq = "Usar bidon"; der = "tenes " + bidones + "   tanque " + (int)(t.L * 100f / t.Cap) + "%"; apagado = bidones <= 0; }
+                else
+                {
+                    izq = "Abrir baul";
+                    der = zona ? autos[activoIdx].Baul.Count + "/" + MaxBaul + " armas" : "ponete atras del auto";
+                    apagado = !zona;
+                }
+                IV.Item(izq, der, x, y, w, i == selNafta, apagado, 0.1f);
+                y += IV.Fila;
+            }
             IV.Pie("Arriba/Abajo: elegir   Enter: aceptar   E: cerrar", x, y, w);
         }
 
@@ -777,15 +808,13 @@ namespace MisAutosMod
             try
             {
                 return activo != null && activoIdx >= 0 && activoIdx < autos.Count && Game.Exists(activo)
-                    && !me.isInVehicle() && me.isAliveAndWell && Trasera(activo).DistanceTo(me.Position) <= 1.9f;
+                    && !me.isInVehicle() && me.isAliveAndWell && Trasera(activo).DistanceTo(me.Position) <= 2.6f;
             }
             catch { return false; }
         }
 
-        // detras de tu auto, E abre el baul (sin carteles)
-        void ChequearBaul(Ped me, int now)
+        void AbrirBaul(Ped me)
         {
-            if (!teclaE || !EnZonaBaul(me)) return;
             baul = true; baulLado = 0; baulSel = 0; baulCierre = 0;
             try { me.Task.ClearAllImmediately(); } catch { }
             try { me.Task.TurnTo(activo.Position); } catch { }
