@@ -32,7 +32,7 @@ instalar.ps1  copia juego/ a la carpeta del GTA IV (con backup)
 
 | Script | Qué hace | Teclas |
 |---|---|---|
-| `VidaNiko.cs` | Salud (desangrarse, botiquín) y necesidades (hambre, sed, vejiga) | `U` usar botiquín, `B` comprarlo (estación), `N` orinar |
+| `VidaNiko.cs` | Salud (desangrarse; gasa, analgésico, jeringa) y necesidades (hambre, sed, vejiga) | `U` usar / mantener `U` rueda, `B` comprar en farmacia o estación, `N` orinar, `Ctrl+F9` registrar farmacia |
 | `MisAutos.cs` | Garage personal estilo GTA V + sistema de nafta | `L` guardar / lista de autos, `G` cargar nafta, `H` comprar bidón |
 | `Heridos.cs` | Los NPC caen heridos, sueltan el arma y se desangran | — (`Heridos.ini`) |
 | `ArmasRapidas.cs` | Selector de armas para probar | `Shift+B` / `Shift+N` elegir, `Shift+M` agarrar |

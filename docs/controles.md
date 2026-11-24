@@ -11,8 +11,10 @@
 | `L` (a pie) | Lista de autos: flechas, `Enter` pedir, `Supr` borrar | MisAutos |
 | `G` | Cargar nafta en estación / usar bidón | MisAutos |
 | `H` | Comprar bidón en estación | MisAutos |
-| `U` | Usar botiquín | VidaNiko |
-| `B` (en estación de servicio) | Comprar botiquín | VidaNiko |
+| `U` (tocar) | Usar el objeto que más sirve (gasa si sangrás) | VidaNiko |
+| `U` (mantener) | Rueda de objetos: mouse/flechas/1-2-3 y soltar | VidaNiko |
+| `B` (farmacia o estación) | Tienda: gasa, analgésico, jeringa | VidaNiko |
+| `Ctrl+F9` | Registrar el lugar actual como farmacia | VidaNiko |
 | `N` | Orinar (alivia la vejiga; si te ve un policía, 1 estrella) | VidaNiko |
 | `I` (manejando) | Apagar / prender motor y luces | MotorAuto |
 | `Shift+B` / `Shift+N` / `Shift+M` | Arma siguiente / anterior / agarrar | ArmasRapidas |
