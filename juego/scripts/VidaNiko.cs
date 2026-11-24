@@ -416,7 +416,7 @@ namespace VidaNikoMod
         {
             try
             {
-                if (Function.Call<bool>("HAS_CUTSCENE_LOADED") && !Function.Call<bool>("HAS_CUTSCENE_FINISHED")) return true;
+                // no usar los natives de cutscene: llamarlos mientras una mision carga una escena puede romper la memoria
                 if (accion != 3 && (Function.Call<bool>("IS_SCREEN_FADED_OUT") || Function.Call<bool>("IS_SCREEN_FADING_OUT"))) return true;
                 bool nuestro = tienda || rueda || regMenu || guantera || sentado != 0 || saludoFase != 0;
                 if (!nuestro && !Function.Call<bool>("IS_PLAYER_CONTROL_ON", PlayerId())) return true;
