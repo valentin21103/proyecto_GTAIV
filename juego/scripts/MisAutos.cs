@@ -5,6 +5,10 @@
 //   A pie:      L = abrir la lista   (flechas elegir, Enter pedirlo, Supr borrarlo, L cerrar)
 //   El auto activo no desaparece, tiene icono en el mapa y se acuerda de su nafta.
 //
+// BAUL (solo tu auto activo)
+//   Parate atras del auto y apreta T: se abre el baul y podes guardar o sacar armas
+//   (flechas izq/der para cambiar de lado, arriba/abajo para elegir, Enter para mover, T para cerrar).
+//
 // NAFTA
 //   Todos los autos gastan nafta al andar (no durante misiones).
 //   En una estacion (icono en el mapa): bajate al lado del auto y apreta G para cargar
@@ -27,7 +31,8 @@ namespace MisAutosMod
         static extern short GetAsyncKeyState(int vKey);
 
         const int VK_L = 0x4C, VK_UP = 0x26, VK_DOWN = 0x28, VK_ENTER = 0x0D, VK_DEL = 0x2E;
-        const int VK_G = 0x47, VK_H = 0x48, VK_W = 0x57;
+        const int VK_G = 0x47, VK_H = 0x48, VK_W = 0x57, VK_T = 0x54, VK_LEFT = 0x25, VK_RIGHT = 0x27;
+        const int MaxBaul = 8;
         const int MaxAutos = 20;
         const string Archivo = "scripts\\MisAutos.txt";
         const string ArchivoNafta = "scripts\\Nafta.ini";
@@ -39,6 +44,7 @@ namespace MisAutosMod
             public int Modelo, C1, C2, C3, C4, Extras;
             public string Nombre;
             public float Nafta = -1f;      // litros; -1 = tanque lleno al pedirlo
+            public List<int[]> Baul = new List<int[]>();   // {arma, municion}
         }
 
         class Tanque
@@ -77,6 +83,7 @@ namespace MisAutosMod
         bool sucio;
 
         bool menu;
+        bool baul; int baulLado, baulSel, baulCierre;   // lado 0 = encima, 1 = baul
         int sel;
         bool[] prev = new bool[256];
         string aviso;
@@ -123,6 +130,12 @@ namespace MisAutosMod
                     a.C3 = int.Parse(p[3]); a.C4 = int.Parse(p[4]); a.Extras = int.Parse(p[5]);
                     a.Nombre = p[6];
                     if (p.Length >= 8) a.Nafta = F(p[7], -1f);
+                    if (p.Length >= 9 && p[8].Trim().Length > 0)
+                        foreach (string w in p[8].Split(';'))
+                        {
+                            string[] q = w.Split(':');
+                            if (q.Length == 2) a.Baul.Add(new int[] { int.Parse(q[0]), int.Parse(q[1]) });
+                        }
                     autos.Add(a);
                 }
             }
@@ -134,9 +147,9 @@ namespace MisAutosMod
             try
             {
                 List<string> o = new List<string>();
-                o.Add("# MisAutos: modelo|color1|color2|color3|color4|accesorios|nombre|nafta(litros)");
+                o.Add("# MisAutos: modelo|color1|color2|color3|color4|accesorios|nombre|nafta(litros)|baul(arma:municion;...)");
                 foreach (Auto a in autos)
-                    o.Add(a.Modelo + "|" + a.C1 + "|" + a.C2 + "|" + a.C3 + "|" + a.C4 + "|" + a.Extras + "|" + a.Nombre.Replace("|", " ") + "|" + a.Nafta.ToString("0.0", CultureInfo.InvariantCulture));
+                    o.Add(a.Modelo + "|" + a.C1 + "|" + a.C2 + "|" + a.C3 + "|" + a.C4 + "|" + a.Extras + "|" + a.Nombre.Replace("|", " ") + "|" + a.Nafta.ToString("0.0", CultureInfo.InvariantCulture) + "|" + BaulTexto(a));
                 File.WriteAllLines(Archivo, o.ToArray());
                 File.WriteAllLines(ArchivoEstado, new string[] { "Bidones=" + bidones });
             }
@@ -359,7 +372,7 @@ namespace MisAutosMod
             int idx = -1;
             for (int i = 0; i < autos.Count; i++)
                 if (autos[i].Modelo == a.Modelo && autos[i].C1 == a.C1 && autos[i].C2 == a.C2) { idx = i; break; }
-            if (idx >= 0) { autos[idx] = a; Aviso("Actualizado en Mis autos: " + a.Nombre); }
+            if (idx >= 0) { a.Baul = autos[idx].Baul; autos[idx] = a; Aviso("Actualizado en Mis autos: " + a.Nombre); }
             else
             {
                 if (autos.Count >= MaxAutos) { Aviso("Mis autos esta lleno (" + MaxAutos + "). Borra uno con L > Supr."); return; }
@@ -426,13 +439,15 @@ namespace MisAutosMod
                 catch { }
             }
 
-            if (naftaActiva) TickNafta(me, now, dt);
+            if (baul) { TickBaul(me, now); DibujarBaul(); }
+            else if (naftaActiva) TickNafta(me, now, dt);
+            if (!baul && !menu && carga == 0) ChequearBaul(me, now);
 
             // menu de autos
             bool l = Pressed(VK_L);
             if (!menu)
             {
-                if (l && me.isAliveAndWell && carga == 0)
+                if (l && me.isAliveAndWell && carga == 0 && !baul)
                 {
                     if (me.isInVehicle()) GuardarAutoActual(me);
                     else if (autos.Count == 0) Aviso("Todavia no guardaste autos: subite a uno y apreta L");
@@ -656,6 +671,172 @@ namespace MisAutosMod
             carga = 3;
             cargaFase = Game.GameTime + 1300;
             Anim(me, "car_boot", "close_boot", false);
+        }
+
+
+        // ================= baul =================
+        static readonly int[] IdsArma = { 1, 23, 42, 4, 5, 28, 36, 7, 27, 43, 9, 29, 8, 10, 11, 26, 22, 31, 30, 12, 13, 32, 33, 14, 15, 34, 16, 17, 35, 21, 18 };
+        static readonly string[] NombresArma = { "Bate", "Taco de pool", "Porra", "Granadas", "Molotov", "Bombas caseras", "Bombas adhesivas",
+            "Glock 19", "Beretta M9A3", "Pistola con silenciador", "FN Five-seveN", "Desert Eagle", "Revolver 8 Bull",
+            "Escopeta de corredera", "Escopeta de combate", "Escopeta recortada", "Escopeta de asalto", "AA12", "AA12 explosiva",
+            "Micro-SMG", "MP5", "P90", "Subfusil dorado", "AK-47", "Carabina M4", "M249", "Francotirador PSG1", "Rifle M40", "DSR1",
+            "Lanzagranadas", "RPG" };
+
+        static string NombreArma(int id)
+        {
+            for (int i = 0; i < IdsArma.Length; i++) if (IdsArma[i] == id) return NombresArma[i];
+            return "Arma " + id;
+        }
+
+        static string BaulTexto(Auto a)
+        {
+            List<string> l = new List<string>();
+            foreach (int[] w in a.Baul) l.Add(w[0] + ":" + w[1]);
+            return string.Join(";", l.ToArray());
+        }
+
+        // armas que Niko lleva encima: {arma, municion}
+        List<int[]> ArmasEncima(Ped me)
+        {
+            List<int[]> r = new List<int[]>();
+            for (int slot = 1; slot <= 10; slot++)
+            {
+                try
+                {
+                    Pointer w = new Pointer(typeof(int)), a1 = new Pointer(typeof(int)), a2 = new Pointer(typeof(int));
+                    Function.Call("GET_CHAR_WEAPON_IN_SLOT", me, slot, w, a1, a2);
+                    int id = Convert.ToInt32(w.Value);
+                    if (id <= 0 || id == 41 || id == 45 || id == 46) continue;   // nada / paracaidas / camara
+                    int muni = 0;
+                    try { Pointer m = new Pointer(typeof(int)); Function.Call("GET_AMMO_IN_CHAR_WEAPON", me, id, m); muni = Convert.ToInt32(m.Value); } catch { }
+                    r.Add(new int[] { id, Math.Max(muni, 1) });
+                }
+                catch { }
+            }
+            return r;
+        }
+
+        Vector3 Trasera(Vehicle v)
+        {
+            double h = v.Heading * Math.PI / 180.0;
+            Vector3 p = v.Position;
+            return new Vector3(p.X + (float)Math.Sin(h) * 2.4f, p.Y - (float)Math.Cos(h) * 2.4f, p.Z);
+        }
+
+        void ChequearBaul(Ped me, int now)
+        {
+            bool t = Pressed(VK_T);
+            if (activo == null || activoIdx < 0 || activoIdx >= autos.Count) return;
+            try
+            {
+                if (!Game.Exists(activo) || me.isInVehicle() || !me.isAliveAndWell) return;
+                if (Trasera(activo).DistanceTo(me.Position) > 1.9f) return;
+            }
+            catch { return; }
+            Ayuda("T: abrir el baul (" + autos[activoIdx].Baul.Count + "/" + MaxBaul + " armas)");
+            if (!t) return;
+            baul = true; baulLado = 0; baulSel = 0; baulCierre = 0;
+            try { me.Task.ClearAllImmediately(); } catch { }
+            try { me.Task.TurnTo(activo.Position); } catch { }
+            Anim(me, "amb@car_stash", "open_boot", false);
+            try { Function.Call("OPEN_CAR_DOOR", activo, 5); } catch { }
+            try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), false); } catch { }
+        }
+
+        void CerrarBaul(Ped me)
+        {
+            baul = false;
+            try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), true); } catch { }
+            Anim(me, "car_boot", "close_boot", false);
+            try { if (activo != null && Game.Exists(activo)) Function.Call("SHUT_CAR_DOOR", activo, 5); } catch { }
+            Guardar();
+        }
+
+        void TickBaul(Ped me, int now)
+        {
+            bool t = Pressed(VK_T), up = Pressed(VK_UP), down = Pressed(VK_DOWN), left = Pressed(VK_LEFT), right = Pressed(VK_RIGHT), enter = Pressed(VK_ENTER);
+            bool valido = false;
+            try { valido = activo != null && Game.Exists(activo) && activoIdx >= 0 && activoIdx < autos.Count && me.isAliveAndWell && !me.isInVehicle() && Trasera(activo).DistanceTo(me.Position) < 3.5f; } catch { }
+            if (t || !valido) { CerrarBaul(me); return; }
+            Auto a = autos[activoIdx];
+            List<int[]> encima = ArmasEncima(me);
+            if (left) { baulLado = 0; baulSel = 0; }
+            if (right) { baulLado = 1; baulSel = 0; }
+            int n = baulLado == 0 ? encima.Count : a.Baul.Count;
+            if (n > 0)
+            {
+                if (up) baulSel = (baulSel + n - 1) % n;
+                if (down) baulSel = (baulSel + 1) % n;
+                if (baulSel >= n) baulSel = n - 1;
+            }
+            if (!enter || n == 0) return;
+            if (baulLado == 0)
+            {
+                // guardar en el baul
+                if (a.Baul.Count >= MaxBaul) { Aviso("El baul esta lleno (" + MaxBaul + " armas)"); return; }
+                int[] w = encima[baulSel];
+                try { Function.Call("REMOVE_WEAPON_FROM_CHAR", me, w[0]); } catch { return; }
+                a.Baul.Add(w);
+                Aviso("Guardaste: " + NombreArma(w[0]));
+            }
+            else
+            {
+                // sacar del baul (si ya llevas un arma de ese tipo, se cambian)
+                int[] w = a.Baul[baulSel];
+                int slotNuevo = -1;
+                try { Pointer sp = new Pointer(typeof(int)); Function.Call("GET_WEAPONTYPE_SLOT", w[0], sp); slotNuevo = Convert.ToInt32(sp.Value); } catch { }
+                if (slotNuevo > 0)
+                {
+                    try
+                    {
+                        Pointer ow = new Pointer(typeof(int)), a1 = new Pointer(typeof(int)), a2 = new Pointer(typeof(int));
+                        Function.Call("GET_CHAR_WEAPON_IN_SLOT", me, slotNuevo, ow, a1, a2);
+                        int vieja = Convert.ToInt32(ow.Value);
+                        if (vieja > 0 && vieja != w[0])
+                        {
+                            Pointer m = new Pointer(typeof(int));
+                            Function.Call("GET_AMMO_IN_CHAR_WEAPON", me, vieja, m);
+                            Function.Call("REMOVE_WEAPON_FROM_CHAR", me, vieja);
+                            a.Baul.Add(new int[] { vieja, Math.Max(1, Convert.ToInt32(m.Value)) });
+                            Aviso("Cambiaste " + NombreArma(vieja) + " por " + NombreArma(w[0]));
+                        }
+                        else Aviso("Sacaste: " + NombreArma(w[0]));
+                    }
+                    catch { }
+                }
+                else Aviso("Sacaste: " + NombreArma(w[0]));
+                try { Function.Call("GIVE_WEAPON_TO_CHAR", me, w[0], w[1], false); } catch { }
+                a.Baul.Remove(w);
+            }
+            sucio = true;
+        }
+
+        void DibujarBaul()
+        {
+            if (activoIdx < 0 || activoIdx >= autos.Count) return;
+            Ped me = null;
+            try { me = Player.Character; } catch { }
+            if (me == null) return;
+            List<int[]> encima = ArmasEncima(me);
+            List<int[]> enBaul = autos[activoIdx].Baul;
+            Function.Call("DRAW_RECT", 0.5f, 0.42f, 0.56f, 0.46f, 0, 0, 0, 175);
+            Texto("BAUL - " + autos[activoIdx].Nombre, 0.5f, 0.2f, 0.36f, 230, 200, 120, true);
+            Texto("ENCIMA", 0.36f, 0.245f, 0.3f, baulLado == 0 ? 255 : 150, baulLado == 0 ? 255 : 150, baulLado == 0 ? 255 : 150, true);
+            Texto("EN EL BAUL (" + enBaul.Count + "/" + MaxBaul + ")", 0.64f, 0.245f, 0.3f, baulLado == 1 ? 255 : 150, baulLado == 1 ? 255 : 150, baulLado == 1 ? 255 : 150, true);
+            for (int lado = 0; lado < 2; lado++)
+            {
+                List<int[]> l = lado == 0 ? encima : enBaul;
+                float x = lado == 0 ? 0.36f : 0.64f;
+                if (l.Count == 0) Texto("(vacio)", x, 0.285f, 0.26f, 140, 140, 140, true);
+                for (int i = 0; i < l.Count; i++)
+                {
+                    float y = 0.285f + i * 0.032f;
+                    bool s = lado == baulLado && i == baulSel;
+                    if (s) Function.Call("DRAW_RECT", x, y + 0.013f, 0.25f, 0.03f, 255, 255, 255, 45);
+                    Texto(NombreArma(l[i][0]) + "  (" + l[i][1] + ")", x, y, 0.26f, s ? 255 : 200, s ? 255 : 200, s ? 255 : 200, true);
+                }
+            }
+            Texto("Izq/Der: lado   Arriba/Abajo: elegir   Enter: " + (baulLado == 0 ? "guardar" : "sacar") + "   T: cerrar", 0.5f, 0.615f, 0.24f, 190, 190, 190, true);
         }
 
         // ================= dibujo =================

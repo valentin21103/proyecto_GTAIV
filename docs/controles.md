@@ -9,6 +9,7 @@
 | `K` / `J` | Aceptar / rechazar multa | Stop Right There |
 | `L` (manejando) | Guardar auto en Mis autos | MisAutos |
 | `L` (a pie) | Lista de autos: flechas, `Enter` pedir, `Supr` borrar | MisAutos |
+| `T` (atrás de tu auto activo) | Abrir el baúl: guardar / sacar armas | MisAutos |
 | `G` | Cargar nafta en estación / usar bidón | MisAutos |
 | `H` | Comprar bidón en estación | MisAutos |
 | `U` (tocar) | Usar el objeto que más sirve (gasa si sangrás) | VidaNiko |
