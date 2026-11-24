@@ -10,10 +10,10 @@ Ordenadas de más difícil a más fácil.
 | 4 | Entrar a más lugares (interiores ocultos + "truco de la puerta") | Difícil | pendiente |
 | 5 | Rueda nueva estilo RDR2 (armas encima / baúl / comida / botiquín) | Media-alta | pendiente |
 | 6 | Nafta + Mis autos + animación en el surtidor | Media-alta | **hecho (v1)** |
-| 7 | Restaurantes funcionales (menú, sentarse a comer) | Media | pendiente |
+| 7 | Restaurantes funcionales (menú, sentarse a comer) | Media | hecho (VidaNiko: comida/bebida, restaurantes registrables, comer sentado) |
 | 8 | Caer al recibir tiros y levantarse (idea de Bullet Impact Euphoria) | Media | pendiente |
 | 9 | Baúl del auto con armas | Media | **hecho (v1)** |
-| 10 | Sentarse en bancos y escalones | Media-baja | pendiente |
+| 10 | Sentarse en bancos y escalones | Media-baja | hecho (VidaNiko: Z) |
 | 11 | Hambre, sed (alcohol/borrachera) y baño | Media-baja | **hecho (v1, sin borrachera)** |
 | 12 | Salud: desangrarse y curarse con botiquín (idea de Bleed & Heal) | Baja | **hecho (v1)** |
 | 13 | Arrest Warrant (opcional) | Baja | pendiente |

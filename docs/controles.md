@@ -12,10 +12,11 @@
 | `T` (atrás de tu auto activo) | Abrir el baúl: guardar / sacar armas | MisAutos |
 | `G` | Cargar nafta en estación / usar bidón | MisAutos |
 | `H` | Comprar bidón en estación | MisAutos |
-| `U` (tocar) | Usar el objeto que más sirve (gasa si sangrás) | VidaNiko |
-| `U` (mantener) | Rueda de objetos: mouse/flechas/1-2-3 y soltar | VidaNiko |
-| `B` (farmacia o estación) | Tienda: gasa, analgésico, jeringa | VidaNiko |
-| `Ctrl+F9` | Registrar el lugar actual como farmacia | VidaNiko |
+| `U` (tocar) | Usar la curación que más sirve (gasa si sangrás) | VidaNiko |
+| `U` (mantener) | Rueda de 8 objetos (curaciones, comida, bebida): mouse o flechas y soltar | VidaNiko |
+| `B` (farmacia, restaurante o estación) | Tienda: farmacia = curaciones + agua; restaurante = comida y bebida; estación = todo | VidaNiko |
+| `Ctrl+F9` / `Ctrl+F8` | Registrar el lugar actual como farmacia / restaurante (`scripts/Lugares.ini`) | VidaNiko |
+| `Z` | Sentarse (de espaldas al banco); `Z` o `W` para pararse. Sentado comés y tomás sentado | VidaNiko |
 | `N` | Orinar (alivia la vejiga; si te ve un policía, 1 estrella) | VidaNiko |
 | `I` (manejando) | Apagar / prender motor y luces | MotorAuto |
 | `Shift+B` / `Shift+N` / `Shift+M` | Arma siguiente / anterior / agarrar | ArmasRapidas |
