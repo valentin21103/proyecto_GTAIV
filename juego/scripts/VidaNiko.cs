@@ -602,6 +602,91 @@ namespace VidaNikoMod
             pcEstado = 0; pcTid = 0; pcBusca = Game.GameTime + 2000;
         }
 
+        // ---- computadora del patrullero (policetest) ----
+        // El juego (main.sco, "R3 triggers") solo la ofrece en 6 modelos fijos: police, police2, noose,
+        // polpatriot, pstockade y fbi. El mod de autos agrega patrulleros nuevos (police3, police4, policew)
+        // que el juego reconoce como policia (la mision de Brucie pide usar la computadora) pero sin
+        // computadora, asi que la E no hacia nada. Se abre igual que el juego: START_NEW_SCRIPT("policetest",
+        // 1024) con el auto parado, derecho y apoyado en las 4 ruedas. En los 6 modelos originales se deja
+        // que la abra el juego y solo se abre desde aca si a los 2,5 s el juego no lo hizo.
+        static readonly string[] ModelosR3 = { "POLICE", "POLICE2", "NOOSE", "POLPATRIOT", "PSTOCKADE", "FBI" };
+        int patEstado, patDesde, patAuto;
+        bool patOriginal;
+
+        bool PatrulleroListo(Ped me, out Vehicle v)
+        {
+            v = null;
+            try
+            {
+                if (!me.isInVehicle() || !me.isAliveAndWell) return false;
+                v = me.CurrentVehicle;
+                if (v == null || !Game.Exists(v)) return false;
+                if (!B("IS_CHAR_IN_ANY_POLICE_VEHICLE", me) || !B("IS_CHAR_SITTING_IN_ANY_CAR", me)) return false;
+                if (!B("IS_THIS_MODEL_A_CAR", v.Model.Hash)) return false;          // ni motos ni helicopteros
+                if (!B("IS_VEH_DRIVEABLE", v) || !B("IS_VEHICLE_ON_ALL_WHEELS", v)) return false;
+                if (v.Speed > 0.4f) return false;                                      // igual que el juego
+                if (!B("IS_PLAYER_CONTROL_ON", PlayerId())) return false;
+                if (B("IS_SCREEN_FADED_OUT") || B("IS_SCREEN_FADING_OUT") || B("IS_MINIGAME_IN_PROGRESS")) return false;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        bool EsModeloR3(Vehicle v)
+        {
+            try { int hv = v.Model.Hash; foreach (string m in ModelosR3) if (hv == new Model(m).Hash) return true; } catch { }
+            return false;
+        }
+
+        void TickPatrullero()
+        {
+            int now = Game.GameTime;
+            Ped me = null;
+            try { me = Game.LocalPlayer.Character; } catch { }
+            if (me == null || !Game.Exists(me)) return;
+            Vehicle v;
+            if (patEstado == 0)
+            {
+                if (tienda || rueda || regMenu || guantera || (accion != 0 && accion != 5) || pcEstado != 0) return;
+                bool listo = PatrulleroListo(me, out v);
+                if (!listo) { if (!me.isInVehicle()) patAuto = 0; return; }
+                if (Inst("policetest") > 0) return;                                   // ya esta abierta
+                bool original = EsModeloR3(v);
+                // patrullero agregado por mods: el juego no avisa, se muestra su mismo mensaje una vez por auto
+                int h = 0; try { h = HandleDe(v); } catch { }
+                if (!original && h != patAuto && !B("IS_HELP_MESSAGE_BEING_DISPLAYED"))
+                {
+                    patAuto = h;
+                    try { if (B("DOES_TEXT_LABEL_EXIST", "R3H_COP")) Function.Call("PRINT_HELP", "R3H_COP"); } catch { }
+                }
+                if (!eTick) return;
+                if (accion == 5) TerminarFumar(me, false);                          // se guarda el cigarrillo
+                patOriginal = original; patEstado = 1; patDesde = now;
+                try { Function.Call("REQUEST_SCRIPT", "policetest"); } catch { }
+                return;
+            }
+            if (patEstado == 1)
+            {
+                if (Inst("policetest") > 0) { patEstado = 0; return; }                 // la abrio el juego
+                if (!PatrulleroListo(me, out v)) { patEstado = 0; return; }
+                if (!B("HAS_SCRIPT_LOADED", "policetest"))
+                {
+                    try { Function.Call("REQUEST_SCRIPT", "policetest"); } catch { }
+                    if (now - patDesde > 8000) { patEstado = 0; Aviso("No se pudo cargar la computadora del patrullero"); }
+                    return;
+                }
+                if (patOriginal && now - patDesde < 2500) return;                     // darle tiempo al juego
+                try { Function.Call("CLEAR_HELP"); } catch { }
+                int tid = 0;
+                try { tid = Function.Call<int>("START_NEW_SCRIPT", "policetest", 1024); } catch { tid = 0; }
+                try { Function.Call("MARK_SCRIPT_AS_NO_LONGER_NEEDED", "policetest"); } catch { }
+                if (tid == 0) Aviso("No se pudo abrir la computadora del patrullero");
+                patEstado = 2; patDesde = now;
+                return;
+            }
+            if (patEstado == 2 && now - patDesde > 2000 && Inst("policetest") <= 0) patEstado = 0;
+        }
+
         void ArreglosInicio()
         {
             int now = Game.GameTime;
@@ -1593,6 +1678,7 @@ namespace VidaNikoMod
             ArreglosInicio();
             RegistrarComputadora();
             TickComputadora();
+            TickPatrullero();
             if (pcEstado != 0) return;   // usando la computadora: nada nuestro en pantalla
             bool cine = EnCinematica();
             if (rueda && !cine)
@@ -1737,6 +1823,8 @@ namespace VidaNikoMod
                 if (N("IS_PAUSE_MENU_ACTIVE") || N("IS_SCREEN_FADED_OUT") || N("IS_SCREEN_FADING_OUT") || !N("IS_HUD_PREFERENCE_SWITCHED_ON")) { vis = false; return vis; }
                 int cm = 0; try { cm = GTA.Native.Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerMain"); } catch { }
                 if (cm > 0) { vis = false; return vis; }
+                int pt = 0; try { pt = GTA.Native.Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "policetest"); } catch { }
+                if (pt > 0) { vis = false; return vis; }                     // computadora del patrullero
                 GTA.Ped p = GTA.Game.LocalPlayer.Character;
                 if (p != null && GTA.Game.Exists(p))
                 {

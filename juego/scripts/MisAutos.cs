@@ -1099,6 +1099,8 @@ namespace MisAutosMod
                 if (N("IS_PAUSE_MENU_ACTIVE") || N("IS_SCREEN_FADED_OUT") || N("IS_SCREEN_FADING_OUT") || !N("IS_HUD_PREFERENCE_SWITCHED_ON")) { vis = false; return vis; }
                 int cm = 0; try { cm = GTA.Native.Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerMain"); } catch { }
                 if (cm > 0) { vis = false; return vis; }
+                int pt = 0; try { pt = GTA.Native.Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "policetest"); } catch { }
+                if (pt > 0) { vis = false; return vis; }                     // computadora del patrullero
                 GTA.Ped p = GTA.Game.LocalPlayer.Character;
                 if (p != null && GTA.Game.Exists(p))
                 {
