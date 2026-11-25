@@ -649,7 +649,7 @@ namespace MisAutosMod
             else if (carga == 3 && now >= cargaFase)
             {
                 carga = 0;
-                try { me.Task.ClearAll(); } catch { }
+                try { me.Task.ClearAllImmediately(); } catch { }
             }
             if (carga == 1 || carga == 3) DibujarCarga();
         }
@@ -689,7 +689,7 @@ namespace MisAutosMod
                 {
                     if (t == null) Aviso("Acercate a tu auto para cargar nafta");
                     else if (t.L >= t.Cap - 0.2f) Aviso("El tanque ya esta lleno");
-                    else if (!EnTapa(me, t.V)) Aviso("Ponete al costado del auto, atras de la puerta del conductor (tapa de nafta)");
+                    else if (!EnTapa(me, t.V)) Aviso(DondeTapa(t.V));
                     else { CerrarMenuNafta(); EmpezarCarga(me, t, est, false, now); return; }
                 }
                 else if (id == 1)
@@ -702,7 +702,7 @@ namespace MisAutosMod
                 {
                     if (bidones <= 0) Aviso("No tenes bidones");
                     else if (t.L >= t.Cap - 0.5f) Aviso("El tanque ya esta lleno");
-                    else if (!EnTapa(me, t.V)) Aviso("Ponete al costado del auto, atras de la puerta del conductor (tapa de nafta)");
+                    else if (!EnTapa(me, t.V)) Aviso(DondeTapa(t.V));
                     else { CerrarMenuNafta(); EmpezarCarga(me, t, null, true, now); return; }
                 }
                 else
@@ -713,7 +713,7 @@ namespace MisAutosMod
                 }
             }
 
-            float x = 0.03f, y = 0.16f, w = 0.3f;
+            float x = 0.03f, y = 0.16f, w = 0.40f;
             IV.Titulo(est != null ? "Estacion de servicio" : "Tu auto", x, y, w);
             y += 0.045f;
             for (int i = 0; i < ids.Count; i++)
@@ -774,7 +774,7 @@ namespace MisAutosMod
             carga = 3;
             cargaFase = Game.GameTime + 700;
             QuitarBidon();
-            try { me.Task.ClearAll(); } catch { }
+            try { me.Task.ClearAllImmediately(); } catch { }   // ClearAll no corta la pose en loop
         }
 
         // ---- bidon en la mano (lata de nafta CJ_OIL_TIN_1 del juego; posicion en scripts\Props.ini) ----
@@ -886,9 +886,30 @@ namespace MisAutosMod
             return v.GetOffsetPosition(new Vector3(-1.4f, -1.0f, 0f));
         }
 
+        bool EsMoto(Vehicle v)
+        {
+            try { return Function.Call<bool>("IS_THIS_MODEL_A_BIKE", v.Model.Hash); } catch { return false; }
+        }
+
         bool EnTapa(Ped me, Vehicle v)
         {
-            try { Vector3 a = Tapa(v), b = me.Position; return new Vector3(a.X, a.Y, b.Z).DistanceTo(b) <= 1.2f; } catch { return false; }
+            try
+            {
+                Vector3 b = me.Position;
+                if (EsMoto(v))
+                {
+                    // moto: tanque adelante del asiento, se carga parado a cualquiera de los dos costados
+                    Vector3 izq = v.GetOffsetPosition(new Vector3(-0.75f, 0.2f, 0f)), der = v.GetOffsetPosition(new Vector3(0.75f, 0.2f, 0f));
+                    return Plano(izq, b) <= 1.1f || Plano(der, b) <= 1.1f;
+                }
+                return Plano(Tapa(v), b) <= 1.2f;
+            }
+            catch { return false; }
+        }
+
+        string DondeTapa(Vehicle v)
+        {
+            return EsMoto(v) ? "Ponete al costado de la moto, a la altura del tanque" : "Ponete al costado del auto, atras de la puerta del conductor (tapa de nafta)";
         }
 
         static float Plano(Vector3 a, Vector3 b) { float dx = a.X - b.X, dy = a.Y - b.Y; return (float)Math.Sqrt(dx * dx + dy * dy); }
@@ -1112,7 +1133,7 @@ namespace MisAutosMod
             GTA.Native.Function.Call("DRAW_RECT", x + w / 2f, y + h / 2f, w, h, c[0], c[1], c[2], a);
         }
 
-        // alin: 0 izquierda, 1 centro
+        // alin: 0 izquierda, 1 centro, 2 derecha (x = borde derecho)
         public static void Texto(string s, float x, float y, float esc, int[] c, int a, int alin)
         {
             if (string.IsNullOrEmpty(s) || !Visible()) return;
@@ -1121,6 +1142,7 @@ namespace MisAutosMod
             GTA.Native.Function.Call("SET_TEXT_COLOUR", c[0], c[1], c[2], a);
             GTA.Native.Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 200);
             if (alin == 1) GTA.Native.Function.Call("SET_TEXT_CENTRE", 1);
+            if (alin == 2) { GTA.Native.Function.Call("SET_TEXT_RIGHT_JUSTIFY", 1); GTA.Native.Function.Call("SET_TEXT_WRAP", 0.0f, x); x = 0f; }
             GTA.Native.Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
         }
 
@@ -1148,7 +1170,9 @@ namespace MisAutosMod
             if (sel) Rect(x, y, w, Fila, Celeste, 210);
             int[] c = apagado ? Atenuado : (sel ? BlancoPuro : Blanco);
             Texto(izq, x + 0.008f, y + 0.006f, 0.29f, c, 255, 0);
-            if (der != null) Texto(der, x + colDer, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
+            // la fuente del juego es ancha: la columna derecha arranca despues del texto izquierdo
+            float col = Math.Max(colDer, 0.0105f * (izq == null ? 0 : izq.Length) + 0.02f);
+            if (der != null) Texto(der, x + col, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
         }
 
         // pie con las teclas, debajo del menu
@@ -1216,7 +1240,7 @@ namespace MisAutosMod
                 Texto(s, 0.5f, 0.78f - fila * 0.032f, 0.30f, BlancoPuro, 255, 1);
                 return;
             }
-            try { GTA.Game.DisplayText(s, 4500); avisoTxt = s; avisoT = now; } catch { }
+            try { GTA.Native.Function.Call("PRINT_STRING_WITH_LITERAL_STRING_NOW", "STRING", s, 4500, 1); avisoTxt = s; avisoT = now; } catch { }
         }
 
         // barra fina (necesidades, nafta); alerta = parpadea en rojo como la vida del juego
@@ -1230,7 +1254,7 @@ namespace MisAutosMod
             Rect(x, y, w, h, alerta ? RojoOscuroDe(c) : CelesteOscuroDe(c), 190);
             float fw = w * Math.Max(0f, Math.Min(1f, valor / 100f));
             if (fw > 0.001f) Rect(x, y, fw, h, alerta ? Rojo : c, a);
-            Texto(nombre, x - 0.004f - 0.0058f * nombre.Length, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 0);
+            Texto(nombre, x - 0.006f, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 2);
         }
 
         static int[] CelesteOscuroDe(int[] c) { return new int[] { c[0] / 3, c[1] / 3, c[2] / 3 }; }

@@ -155,7 +155,7 @@ namespace MotorAutoMod
             GTA.Native.Function.Call("DRAW_RECT", x + w / 2f, y + h / 2f, w, h, c[0], c[1], c[2], a);
         }
 
-        // alin: 0 izquierda, 1 centro
+        // alin: 0 izquierda, 1 centro, 2 derecha (x = borde derecho)
         public static void Texto(string s, float x, float y, float esc, int[] c, int a, int alin)
         {
             if (string.IsNullOrEmpty(s) || !Visible()) return;
@@ -164,6 +164,7 @@ namespace MotorAutoMod
             GTA.Native.Function.Call("SET_TEXT_COLOUR", c[0], c[1], c[2], a);
             GTA.Native.Function.Call("SET_TEXT_DROPSHADOW", 1, 0, 0, 0, 200);
             if (alin == 1) GTA.Native.Function.Call("SET_TEXT_CENTRE", 1);
+            if (alin == 2) { GTA.Native.Function.Call("SET_TEXT_RIGHT_JUSTIFY", 1); GTA.Native.Function.Call("SET_TEXT_WRAP", 0.0f, x); x = 0f; }
             GTA.Native.Function.Call("DISPLAY_TEXT_WITH_LITERAL_STRING", x, y, "STRING", s);
         }
 
@@ -191,7 +192,9 @@ namespace MotorAutoMod
             if (sel) Rect(x, y, w, Fila, Celeste, 210);
             int[] c = apagado ? Atenuado : (sel ? BlancoPuro : Blanco);
             Texto(izq, x + 0.008f, y + 0.006f, 0.29f, c, 255, 0);
-            if (der != null) Texto(der, x + colDer, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
+            // la fuente del juego es ancha: la columna derecha arranca despues del texto izquierdo
+            float col = Math.Max(colDer, 0.0105f * (izq == null ? 0 : izq.Length) + 0.02f);
+            if (der != null) Texto(der, x + col, y + 0.006f, 0.29f, sel ? BlancoPuro : (apagado ? Atenuado : cDer), 255, 0);
         }
 
         // pie con las teclas, debajo del menu
@@ -259,7 +262,7 @@ namespace MotorAutoMod
                 Texto(s, 0.5f, 0.78f - fila * 0.032f, 0.30f, BlancoPuro, 255, 1);
                 return;
             }
-            try { GTA.Game.DisplayText(s, 4500); avisoTxt = s; avisoT = now; } catch { }
+            try { GTA.Native.Function.Call("PRINT_STRING_WITH_LITERAL_STRING_NOW", "STRING", s, 4500, 1); avisoTxt = s; avisoT = now; } catch { }
         }
 
         // barra fina (necesidades, nafta); alerta = parpadea en rojo como la vida del juego
@@ -273,7 +276,7 @@ namespace MotorAutoMod
             Rect(x, y, w, h, alerta ? RojoOscuroDe(c) : CelesteOscuroDe(c), 190);
             float fw = w * Math.Max(0f, Math.Min(1f, valor / 100f));
             if (fw > 0.001f) Rect(x, y, fw, h, alerta ? Rojo : c, a);
-            Texto(nombre, x - 0.004f - 0.0058f * nombre.Length, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 0);
+            Texto(nombre, x - 0.006f, y - 0.007f, 0.21f, alerta ? RojoClaro : Blanco, 255, 2);
         }
 
         static int[] CelesteOscuroDe(int[] c) { return new int[] { c[0] / 3, c[1] / 3, c[2] / 3 }; }
