@@ -16,6 +16,7 @@ Estado al 25/11/2026.
 | `IV_Weapon_Wheel.asi` | apagado para la misma prueba y vuelto a prender el 25/11 | activo |
 | `Savefiles/Rockstar Games/GTA IV/ControlMap.dat` | renombrado a `.bak` para que el juego cree los controles de fabrica | el juego crea uno nuevo |
 | `plugins/GTAIV.EFLC.FusionFix.cfg` | rendimiento: ShadowFilter 2->1, ExtraNightShadows 1->0, DepthOfField 2->1, DisplayFpsCounter 0->1 | activo, copia en `.bak_20261125` |
+| `plugins/DLSS-IV.cfg` | `quality` 1 -> 0 (DLAA: 1080p reales en vez de 720p escalado; el limite es el procesador) | activo, copia en `.bak_20261125` |
 
 ## Partida guardada y objetos interactivos
 La partida guarda "este modelo usa este script" por numero de modelo. Al agregar/sacar modelos con mods
