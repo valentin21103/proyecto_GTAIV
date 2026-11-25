@@ -617,11 +617,13 @@ namespace VidaNikoMod
 
         // Registro automatico (scripts\DiagComputadora.txt) cuando estas en un interior con una computadora cerca
         // o durante la mision del cibercafe (roman9): cada segundo anota cada condicion que pide el juego.
+        const bool RegistroActivo = false;
         int diagProx, diagLineas;
         const string NombresScripts = "advanced_car_actions,ambairpotarea,ambatmq,ambbar,ambbarrier,ambbeggar,ambblkhawk,ambbouncer,ambbridgepatrol,ambbusker,ambcabaret,ambcargoholddoors,ambchurchdoors,ambclublights,ambcomedyclub,ambcontrolloader,ambcontrolmain,ambdealer,ambdebug,ambfloater,ambgerry3doorlock,ambhelicopter,ambhomelandcordon,ambhomelandfed,ambhomelandsirens,ambhotel,ambinternetcafe,ambjerseydocksgates,ambjimslocks,ambliftdoors,ambnightclubext,ambpimpnpros,ambpoledancer,ambpolrdblk,ambpreacher,ambsavebed,ambshowroom,ambstripclub,ambtaxdpt,ambtaxihail,ambtoiletdoors,ambtunnelcops,ambtv,ambunarea,ambwardrobe,ambwindowlift,arrestescapehelp,atmobj,badman_1,bell2,bell3m,bell3p,bell5,bell6,bell7,bernie1,bernie2,bernie3,berniecar,binco_brook_s,boating,bowl_trigger,bowling_lane,brian_1,brian_2,brian_3,brucie1,brucie2,brucie3_meetguy,brucie3a,brucie3b,brucie4,brucie5m,brucie5p,brucie_heli,brucieboat,bruciecopter,bruciedrink,brucieeat,brucielift,brucieshow,bruciestrip,brucietenpin,burgervendor,cablecars,car_theft_texts,cardivehelp,carfoodrunjack,carwash,cherise,cia1,cia2,cia3,cia4,ciawanted,clarence,cleanupray5trains,computermain,computernews,computerstreamed,copbootsearch,darts,darts_launcher,darts_trigger,date_activity,date_food,dating_alex,dating_carmen,dating_kate,dating_kiki,dating_michelle,deatharresthelp,derrick1,derrick2,derrick3,dwayne1,dwayne3,dwayne_backup,dwaynecherise,dwaynedrink,dwayneeat,dwayneemail,dwayneshow,dwaynestrip,dwaynetenpin,eddie1,eddie2,elizabeta1,elizabeta2,elizabeta3,elizabeta4,emergencycall,empiredown,empiretelescope,endcreditroll,endgamenews,faustin1,faustin2,faustin3,faustin4,faustin5,faustin5_fire,faustin6,faustin7,finale1a,finale1b,finale1c,finale1d,finale2,finaleaorb,finaleintrocut,finalewedtxts,foodserver,francis1,francis2_appointment,francis2a,francis2b,francis3,francis4,francis5,francis6,gambetti1,gambetti2,gambetti3,garbage_trucks,gerry1,gerry1_base,gerry2,gerry3_phonegirl,gerry3a,gerry3b,gerry3c,gerry4,gerry5,go_on_date,gracie,gunlockup,gunlockupct,handbrakehelp,happytshirt,helicopter,hospitalpickup,hossan_1,hotwirehelp,ilyena,ilyena_calls,independencefm,initial,internet_dating,ivan_1,jacob1,jacob2,jacob3m,jacob3p,jacob_gun_car,jacobdarts,jacobdrink,jacobeat,jacoblift,jacobpool,jacobshow,jacobstrip,jeff_1,jeff_1_mission,jeff_2,jeff_3,jimmy1,jimmy2,jimmy3,jimmy4,jimmy4a,jimmysuit,laterweapons,magvendor,main,manhat_heli_tours,manny1,manny2,manny3,marnie1,marnie2,mel,michelle1,michelle1_queue,michelle_introcalls,modo_manhat_5,mostwanted,mptutoriallauncher,multiplayertutorial,multitutorial,network_session,nutvendor,organiserhelp,packie1,packie2,packie3,packie_bomb,packiedarts,packiedrink,packiepool,packieshow,packiestrip,packiesuit,packietenpin,pathos1,pathos2,pdbhangoutmgr,pdbhomemgr,pdbmostwanted,perseus_manhat_8,phonepadhelp,phoneprofilehelp,physicstestbed,placeholder,playboy2,playboy3,playboy4,policebackup,policetest,pool_game,pool_table,puzzle,puzzle_launcher,pxdfcut,ray1,ray2,ray3,ray4,ray5,ray6,replayhelp,replaytutorial,roman1,roman10m,roman10p,roman11,roman12,roman13,roman14,roman2,roman3,roman3txtmsgrepeat,roman4,roman5,roman6,roman7,roman8m,roman8p,roman9,roman_bleedoutintro,roman_fakeblip,roman_taxi,romanblips,romandarts,romandrink,romaneat,romanmarker,romanpool,romanshow,romanstrip,romantenpin,sara2,sara_1,sixaxistutlauncher,sixaxistutorial,spcellphone,spcellphonecalling,spcellphonedebug,spcellphoneendcall,spcellphonemain,spcellphonenetwork,spcellphonetutorial,speechcontrol,sprunk,startup,stat_bridge,stattracker,storytimer,stunt,taxi,taxi_trigger,telescope,tenpinbowl,text_link_mission,till,tollbooth,trainhelper,txtmsghelp,vendor,vigilante,vlad1,vlad2,vlad3,vlad4,wantedhelp,waypointhelp,webalexblog,webautoeroticar,webcraplist,webdating,webdatingboys,webdatingfullprofile,webdatinggirls,webeddieblog,webemail,weberror,webeyefind,webeyefindsearch,weblawyerscareer,weblawyerscv,weblcpd,weblcpdprofile,weblibertytree,weblibertytreenews,webourownreality,webpublicliberty,webrealestate,webringtones,webringtonesmono,webringtonespoly,webringtonespurchase,webringtonestheme,webweazel,webweazelnews,webwhatthey,window_lift_launcher";
         void RegistrarComputadora()
         {
             int now = Game.GameTime;
+            if (!RegistroActivo) return;   // ya no hace falta (la computadora anda); se deja para diagnosticos
             if (now < diagProx || diagLineas > 3000) return;
             diagProx = now + 1000;
             try
@@ -1656,7 +1658,7 @@ namespace VidaNikoMod
     // - Ayudas: caja de ayuda REAL del juego (textos en update/common/text/spanishVN.gxt, ver tools/gxt_vn.py).
     // - Avisos: subtitulos REALES del juego (no pisan el texto de una mision).
     // - Nada se dibuja con el menu de pausa / mapa, el celular, la computadora, fundidos o el HUD apagado.
-    // - Barras: una sola columna arriba del radar (abajo a la derecha el juego pone calle y auto).
+    // - Barras: una sola columna a la derecha, por encima de donde el juego pone el nombre de la calle y del auto.
     static class IV
     {
         // paleta del juego
@@ -1667,8 +1669,8 @@ namespace VidaNikoMod
 
         public const float Fila = 0.034f;
 
-        // ---- columna de barras (arriba del radar). Lugar 0 = nafta (MisAutos), 1.. = VidaNiko ----
-        public const float BarraX = 0.095f, BarraW = 0.085f, BarraY0 = 0.705f, BarraPaso = 0.021f;
+        // ---- columna de barras (derecha, arriba del nombre de calle/auto). Lugar 0 = nafta (MisAutos), 1.. = VidaNiko ----
+        public const float BarraX = 0.875f, BarraW = 0.085f, BarraY0 = 0.80f, BarraPaso = 0.021f;
         public static float BarraY(int lugar) { return BarraY0 - lugar * BarraPaso; }
 
         static bool N(string n, params GTA.Native.Parameter[] a) { try { return GTA.Native.Function.Call<bool>(n, a); } catch { return false; } }

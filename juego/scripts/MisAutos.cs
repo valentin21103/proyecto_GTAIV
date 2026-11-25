@@ -1070,7 +1070,7 @@ namespace MisAutosMod
     // - Ayudas: caja de ayuda REAL del juego (textos en update/common/text/spanishVN.gxt, ver tools/gxt_vn.py).
     // - Avisos: subtitulos REALES del juego (no pisan el texto de una mision).
     // - Nada se dibuja con el menu de pausa / mapa, el celular, la computadora, fundidos o el HUD apagado.
-    // - Barras: una sola columna arriba del radar (abajo a la derecha el juego pone calle y auto).
+    // - Barras: una sola columna a la derecha, por encima de donde el juego pone el nombre de la calle y del auto.
     static class IV
     {
         // paleta del juego
@@ -1081,8 +1081,8 @@ namespace MisAutosMod
 
         public const float Fila = 0.034f;
 
-        // ---- columna de barras (arriba del radar). Lugar 0 = nafta (MisAutos), 1.. = VidaNiko ----
-        public const float BarraX = 0.095f, BarraW = 0.085f, BarraY0 = 0.705f, BarraPaso = 0.021f;
+        // ---- columna de barras (derecha, arriba del nombre de calle/auto). Lugar 0 = nafta (MisAutos), 1.. = VidaNiko ----
+        public const float BarraX = 0.875f, BarraW = 0.085f, BarraY0 = 0.80f, BarraPaso = 0.021f;
         public static float BarraY(int lugar) { return BarraY0 - lugar * BarraPaso; }
 
         static bool N(string n, params GTA.Native.Parameter[] a) { try { return GTA.Native.Function.Call<bool>(n, a); } catch { return false; } }
