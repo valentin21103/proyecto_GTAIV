@@ -1,6 +1,6 @@
 # Cambios hechos en la carpeta del juego (fuera de scripts/)
 
-Estado al 24/11/2026. Todo lo que se desactivo para probar volvio a su lugar.
+Estado al 25/11/2026.
 
 | Archivo | Cambio | Estado |
 |---|---|---|
@@ -11,6 +11,11 @@ Estado al 24/11/2026. Todo lo que se desactivo para probar volvio a su lugar.
 | `IV_Weapon_Wheel.asi`, `FirstPersonCutscene.asi`, `ProperCoverandDrive-By.asi` | desactivados para pruebas | reactivados |
 | `update/common/data/*` (autos agregados) | desactivados para pruebas | reactivados |
 | `update/2a, 2b, 2c, 10` (mods de mapa) | sacados para pruebas | devueltos |
+| `update/pc/data/maps/props/lev_des/minigame.ide` | apartado en `_desactivados/lev_des/` (prueba: terminal de la policia, mision de Brucie, FusionFix issue #698) | desactivado |
+| `plugins/ProperCoverandDrive-By.asi`, `plugins/FirstPersonCutscene.asi` | renombrados a `.off` (prueba de la terminal de la policia) | desactivados |
+| `IV_Weapon_Wheel.asi` | apagado para la misma prueba y vuelto a prender el 25/11 | activo |
+| `Savefiles/Rockstar Games/GTA IV/ControlMap.dat` | renombrado a `.bak` para que el juego cree los controles de fabrica | el juego crea uno nuevo |
+| `plugins/GTAIV.EFLC.FusionFix.cfg` | rendimiento: ShadowFilter 2->1, ExtraNightShadows 1->0, DepthOfField 2->1, DisplayFpsCounter 0->1 | activo, copia en `.bak_20261125` |
 
 ## Partida guardada y objetos interactivos
 La partida guarda "este modelo usa este script" por numero de modelo. Al agregar/sacar modelos con mods

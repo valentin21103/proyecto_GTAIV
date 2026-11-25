@@ -13,7 +13,7 @@
 | `U` (tocar) | Usar la curación que más sirve (gasa si sangrás) | VidaNiko |
 | `U` (mantener) | Rueda de objetos (curaciones, comida, bebida, cigarrillos) y estado de Niko (hambre, sed, baño, salud): mouse o flechas y soltar | VidaNiko |
 | `U` (en tu auto, parado) | Guantera: hasta 3 bebidas; Enter tomar / guardar, Retroceso sacar | VidaNiko + MisAutos |
-| `U` (fumando) | Tirar el cigarrillo (se puede caminar fumando) | VidaNiko |
+| `U` (fumando) | Apagar el cigarrillo: a pie lo pisa, en el auto lo tira por la ventana (se puede caminar y manejar fumando) | VidaNiko |
 | `E` (mirando al empleado) | Hablar con el empleado y comprar: farmacia = curaciones + agua; restaurante = comida y bebida; almacén = bebidas, snacks y cigarrillos | VidaNiko |
 | `E` (estación de servicio) | Tienda de autoservicio: de todo | VidaNiko |
 | `Ctrl+F8` | Menú para registrar el lugar actual como farmacia, restaurante, almacén o baño (tu casa) (`scripts/Lugares.ini`) | VidaNiko |

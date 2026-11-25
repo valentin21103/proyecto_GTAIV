@@ -8,7 +8,7 @@
 //   Gasa (frena la sangre, cura todo) - Analgesico (cura la mitad) - Jeringa (cura de a poco)
 //   Hamburguesa, Pancho, Chocolate (hambre) - Agua, Gaseosa, Cerveza (sed) - Cigarrillos
 //   Niko tiene el objeto del juego en la mano (posiciones en scripts\Props.ini).
-//   Cigarrillos: lo saca, lo prende y fuma; U o caminar para tirarlo. Calma el hambre y cura un poco.
+//   Cigarrillos: lo saca, lo prende y fuma (animaciones del Smoke Mod); U para apagarlo. Calma el hambre y cura un poco.
 //   U rapido = usa la curacion que mas sirve. Mantener U = rueda de objetos:
 //   mouse (o flechas) hacia el objeto y solta U. Sentado, comes y tomas sentado.
 //
@@ -76,7 +76,7 @@ namespace VidaNikoMod
             new Obj("Agua", "sed +50", 2, 2, 3, 4000, 0, 50, 12, "amb@drink_bottle", "bottle_stand", "amb@bnch_eat_idl", "sit_idle_a"),
             new Obj("Gaseosa", "sed +40", 2, 3, 3, 4000, 0, 40, 15, "amb@drink_can", "can_stand", "amb@bnch_eat_idl", "sit_idle_a"),
             new Obj("Cerveza", "sed +25", 2, 5, 3, 4000, 0, 25, 22, "amb@drink_bottle", "bottle_stand", "amb@bnch_eat_idl", "sit_idle_a"),
-            new Obj("Cigarrillos", "atado de 20, calma el hambre", 3, 6, 40, 0, 0, 0, 0, "amb@smoking_create", "stand_create", null, null),
+            new Obj("Cigarrillos", "atado de 20, calma el hambre", 3, 6, 40, 0, 0, 0, 0, "amb@smoking_spliff", "create_spliff", null, null),
         };
 
         // ---- opciones ----
@@ -105,7 +105,7 @@ namespace VidaNikoMod
         static readonly string[] TiposLugar = { "FARMACIA", "RESTAURANTE", "ALMACEN", "BANO" };
         static readonly string[] DescLugar = { "curaciones y agua", "comida y bebida", "bebidas, snacks y cigarrillos", "tu casa: ahi podes ir al bano" };
         // objeto en la mano y cigarrillo
-        GTA.Object prop; int ptfx = -1; int fumarFase, fumarHasta, proximaPitada;
+        GTA.Object prop; int ptfx = -1; int fumarFase, proximaPitada;
         bool humo = true;
         // hablar con el empleado antes de comprar: 1 Niko saluda, 2 el empleado responde
         Ped empleado; int saludoFase, saludoHasta;
@@ -765,7 +765,7 @@ namespace VidaNikoMod
             "amb@drink_bottle", "amb@drink_can", "amb@cafe_eat_idles", "amb@bnch_eat_idl", "amb@beg_standing",
             "cop_search_idles", "amb@hotdog_hold", "move_m@cower", "amb@yawn", "playidles_tired_1h",
             "dam_rec_player", "amb@burgercart", "amb@ffood_server",
-            "missttkill", "amb@smoking_create", "amb@smoking", "amb@smoking_destroy", "gestures@male" };
+            "missttkill", "amb@smoking_spliff", "veh@drivebyvan", "gestures@male" };
         int proximaCarga;
         void PrecargarAnims(int now)
         {
@@ -850,7 +850,7 @@ namespace VidaNikoMod
                 if (prop != null && Game.Exists(prop))
                 {
                     Function.Call("ATTACH_OBJECT_TO_PED", prop, me, 1232, pos.X, pos.Y, pos.Z, rot.X, rot.Y, rot.Z, 0);
-                    if (accion == 5 && humo) { try { ptfx = Function.Call<int>("START_PTFX_ON_OBJ", "ambient_cig_smoke", prop, 0.125f, -0.02f, 0.01f, 0f, 0f, 0f, 1.1f); } catch { ptfx = -1; } }
+                    if (accion == 5 && fumarFase >= 2) EncenderHumo();
                 }
             }
             catch { prop = null; }
@@ -1112,10 +1112,10 @@ namespace VidaNikoMod
             {
                 if (sentado != 0) { Aviso("Parate para fumar"); return; }
                 o.Tengo--;
-                accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 3500; accionDur = 3500;
-                fumarCamina = Moviendose();
-                Arriba(me, "amb@smoking_create", fumarCamina ? "walk_create" : "stand_create", false, 3500);
-                PonerProp(me, o.Prop);
+                // animaciones del Smoke Mod (Lilmcnessy): lo saca y lo prende una sola vez
+                accion = 5; accionObj = i; fumarFase = 1; accionFin = now + 4100; accionDur = 4100;
+                fumarPropEn = now + 1600; fumarTirarEn = 0; pitadas = 0; exhalarEn = 0;
+                AnimF(me, "amb@smoking_spliff", "create_spliff", FlagsFumar);
                 return;
             }
             o.Tengo--;
@@ -1220,49 +1220,99 @@ namespace VidaNikoMod
             return r;
         }
 
-        // ================= fumar (estilo RDR) =================
-        // fase 1 lo prende, 2 fuma (podes caminar; U para apagarlo), 3 lo apaga
-        int proximoHumo;
+        // ================= fumar (animaciones del Smoke Mod de Lilmcnessy) =================
+        // fase 1 lo saca y lo prende (una sola vez), 2 fuma: una pitada cada tanto (solo la parte
+        // de arriba del cuerpo, se puede caminar y seguir en el auto), 3 lo apaga: a pie lo pisa,
+        // en el auto lo tira por la ventana. U lo apaga antes.
+        const int PitadasCigarrillo = 6, CadaPitada = 7000;
+        const AnimationFlags FlagsFumar = (AnimationFlags)3328;   // los mismos flags del Smoke Mod
+        int fumarPropEn, fumarTirarEn, pitadas, exhalarEn, fumarAyudaHasta;
+
+        void AnimF(Ped p, string set, string clip, AnimationFlags flags)
+        {
+            try
+            {
+                if (!AnimLista(set)) Function.Call("REQUEST_ANIMS", set);
+                AnimationSet s;
+                if (!sets.TryGetValue(set, out s)) { s = new AnimationSet(set); sets[set] = s; }
+                p.Task.PlayAnimation(s, clip, 8f, flags);
+            }
+            catch { }
+        }
+
         void TickFumar(Ped me, int now, int vida, bool aPie, bool uPress)
         {
             TickProp(me);
-            if (!aPie) { TerminarFumar(me, fumarFase >= 2); return; }
-            if (fumarFase == 1 && now >= accionFin)
+            bool vivo = true, enAuto = false;
+            try { vivo = me.isAliveAndWell; enAuto = me.isInVehicle(); } catch { }
+            if (!vivo) { TerminarFumar(me, false); return; }
+            // pantalla en negro (escena de mision, carga): se guarda el cigarrillo sin animar nada
+            bool negro = false;
+            try { negro = Function.Call<bool>("IS_SCREEN_FADED_OUT"); } catch { }
+            if (negro) { TerminarFumar(me, false); return; }
+
+            if (fumarFase == 1)
             {
-                fumarFase = 2; fumarHasta = now + 25000; proximaPitada = now + 5000; proximoHumo = now + 3000;
-                accionFin = fumarHasta; accionDur = 25000;
-                fumarCamina = Moviendose();
-                Arriba(me, "amb@smoking", fumarCamina ? "walk_smoke" : "stand_smoke", true, 0);
+                if (fumarPropEn > 0 && now >= fumarPropEn) { fumarPropEn = 0; PonerProp(me, objs[accionObj].Prop); }
+                if (now >= accionFin)
+                {
+                    fumarFase = 2; pitadas = 0; proximaPitada = now + 2500;
+                    accionDur = 2500 + PitadasCigarrillo * CadaPitada; accionFin = now + accionDur;
+                    fumarAyudaHasta = now + 6000;
+                    EncenderHumo();
+                }
+                else if (now > accionFin + 4000) TerminarFumar(me, false);   // por si algo se traba
+                return;
             }
-            else if (fumarFase == 2)
+
+            if (fumarFase == 2)
             {
-                // como los NPC: una animacion para parado y otra caminando
-                bool camina = Moviendose();
-                if (camina != fumarCamina) { fumarCamina = camina; Arriba(me, "amb@smoking", camina ? "walk_smoke" : "stand_smoke", true, 0); }
-                if (now >= proximaPitada) { proximaPitada = now + 5000; if (vida < vidaMax) SetVida(me, vida + 1); }
-                if (humo && now >= proximoHumo)
+                if (exhalarEn > 0 && now >= exhalarEn)
                 {
-                    proximoHumo = now + 6000;
-                    try { Function.Call("TRIGGER_PTFX_ON_PED_BONE", "ped_smoke_exhale", me, 0f, 0f, 0f, 0f, 0f, 0f, 1205, 1.1f); } catch { }
+                    exhalarEn = 0;
+                    if (humo) { try { Function.Call("TRIGGER_PTFX_ON_PED_BONE", "ped_smoke_exhale", me, 0f, 0f, 0f, 0f, 0f, 0f, 1205, 1.1f); } catch { } }
+                    if (vida < vidaMax) SetVida(me, Math.Min(vidaMax, vida + 2));
                 }
-                if (uPress || now >= fumarHasta)
+                if (uPress || (pitadas >= PitadasCigarrillo && now >= proximaPitada - 3000))
                 {
-                    fumarFase = 3; accionFin = now + 2000; accionDur = 2000;
-                    Arriba(me, "amb@smoking_destroy", "walk_destroy", false, 2000);
+                    fumarFase = 3; exhalarEn = 0;
+                    if (enAuto) { AnimF(me, "veh@drivebyvan", "throw_grenade", AnimationFlags.None); fumarTirarEn = now + 1000; accionDur = 1400; }
+                    else { AnimF(me, "amb@nightclub_ext", "smoke_stub_out", AnimationFlags.None); fumarTirarEn = now + 1700; accionDur = 1900; }
+                    accionFin = now + accionDur;
+                    return;
                 }
+                if (now >= proximaPitada && pitadas < PitadasCigarrillo)
+                {
+                    pitadas++; proximaPitada = now + CadaPitada; exhalarEn = now + 2200;
+                    AnimF(me, "amb@smoking_spliff", enAuto ? "partial_smoke_car" : "partial_smoke", FlagsFumar);
+                }
+                return;
             }
-            else if (fumarFase == 3 && now >= accionFin) TerminarFumar(me, true);
-            if (now > accionFin + 4000) TerminarFumar(me, fumarFase >= 2);   // por si algo se traba
+
+            if (fumarFase == 3)
+            {
+                if (fumarTirarEn > 0 && now >= fumarTirarEn)
+                {
+                    fumarTirarEn = 0;
+                    if (enAuto) QuitarProp(); else TirarProp();     // a pie la colilla queda en el piso
+                }
+                if (now >= accionFin) TerminarFumar(me, true);
+                return;
+            }
+            TerminarFumar(me, false);
         }
 
-        bool fumarCamina;
+        void EncenderHumo()
+        {
+            if (!humo || ptfx >= 0 || prop == null) return;
+            try { if (Game.Exists(prop)) ptfx = Function.Call<int>("START_PTFX_ON_OBJ", "ambient_cig_smoke", prop, 0.125f, -0.02f, 0.01f, 0f, 0f, 0f, 1.1f); } catch { ptfx = -1; }
+        }
 
         void TerminarFumar(Ped me, bool fumo)
         {
-            if (fumo && fumarFase == 3) TirarProp(); else QuitarProp();
-            CortarArriba(me);
+            QuitarProp();
             if (fumo) { hambre = Math.Min(100f, hambre + 10f); Aviso("Fumaste un cigarrillo. Te quedan " + objs[accionObj].Tengo); }
-            fumarFase = 0; accion = 0;
+            fumarFase = 0; accion = 0; fumarPropEn = 0; fumarTirarEn = 0; exhalarEn = 0;
         }
 
         void TerminarAccion(Ped me, bool cuerpoEntero)
@@ -1567,7 +1617,7 @@ namespace VidaNikoMod
                 IV.Progreso(t, Avance(now));
             }
             if (accion == 2) IV.Progreso("Orinando", Avance(now));
-            if (accion == 5 && fumarFase == 2) Ayuda("Podes caminar fumando. Apreta U para apagar el cigarrillo.");
+            if (accion == 5 && fumarFase == 2 && now < fumarAyudaHasta) Ayuda("Podes caminar fumando. Apreta U para apagar el cigarrillo.");
             if (accion == 3) IV.Texto("Niko esta ocupado...", 0.5f, 0.47f, 0.42f, IV.BlancoPuro, 255, 1);
         }
 
