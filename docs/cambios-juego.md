@@ -17,6 +17,7 @@ Estado al 25/11/2026.
 | `Savefiles/Rockstar Games/GTA IV/ControlMap.dat` | renombrado a `.bak` para que el juego cree los controles de fabrica | el juego crea uno nuevo |
 | `plugins/GTAIV.EFLC.FusionFix.cfg` | rendimiento: ShadowFilter 2->1, ExtraNightShadows 1->0, DepthOfField 2->1, DisplayFpsCounter 0->1 | activo, copia en `.bak_20261125` |
 | `plugins/DLSS-IV.cfg` | `quality` 1 -> 0 (DLAA: 1080p reales en vez de 720p escalado; el limite es el procesador) | activo, copia en `.bak_20261125` |
+| `plugins/DLSS-IV.cfg` | `cpu_place` 0 -> 1 (cada hilo pesado en su propio nucleo; Ryzen 3600 con dos grupos de nucleos). Si traba, volver a 0 | en prueba, copia en `.bak_cpuplace` |
 
 ## Partida guardada y objetos interactivos
 La partida guarda "este modelo usa este script" por numero de modelo. Al agregar/sacar modelos con mods
