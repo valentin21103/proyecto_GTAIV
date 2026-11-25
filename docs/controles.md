@@ -19,6 +19,7 @@
 | `Ctrl+F8` | Menú para registrar el lugar actual como farmacia, restaurante, almacén o baño (tu casa) (`scripts/Lugares.ini`) | VidaNiko |
 | `Ctrl+F9` | Registrar farmacia directo | VidaNiko |
 | `Z` | Sentarse (de espaldas al banco); `Z` o `W` para pararse. Sentado comés y tomás sentado | VidaNiko |
+| `E` (frente a una computadora, adentro) | Usar la computadora (abre el escritorio del juego aunque la partida tenga el monitor sin script) | VidaNiko |
 | `Ctrl+F6` / `Ctrl+Shift+F6` | Diagnóstico de la computadora del cibercafé / destrabar: re-registra las computadoras en la partida, libera el menú de pausa, el control y el minijuego. Se arregla solo si te parás 4 s frente a una computadora que no responde | VidaNiko |
 | `N` (tocar) | Orinar: vacía la vejiga y la comida te llena x1.25 por 10 min | VidaNiko |
 | `N` (mantener, cerca de un baño) | Ir de cuerpo (pantalla a negro). Sirve en bares, restaurantes, tiendas, estaciones, baños químicos o un baño registrado: vacía el intestino y la comida te llena x1.5 por 15 min | VidaNiko |

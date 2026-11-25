@@ -489,6 +489,119 @@ namespace VidaNikoMod
             catch { Aviso("No se pudieron registrar las computadoras"); }
         }
 
+        // ---- Usar la computadora sin depender del registro de la partida ----
+        // Hace exactamente lo que hace el script del juego (computerStreamed) cuando apretas la tecla:
+        // control apagado, "minijuego en curso", fundido, y arranca computerMain pasandole EL MONITOR
+        // (computerMain lee la sala y el tipo de computadora desde ese objeto). La mision ve todo igual.
+        bool eTick;
+        GTA.Object pcObj;
+        int pcBusca, pcEstado, pcTid, pcDesde;
+        IntPtr pcMem = IntPtr.Zero;
+
+        int Inst(string sc) { try { return Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", sc); } catch { return -1; } }
+
+        static int HandleDe(object o)
+        {
+            for (Type t = o.GetType(); t != null; t = t.BaseType)
+            {
+                System.Reflection.PropertyInfo p = t.GetProperty("Handle", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.DeclaredOnly);
+                if (p != null) { try { return (int)p.GetValue(o, null); } catch { return 0; } }
+            }
+            return 0;
+        }
+
+        void LogPc(string l) { try { File.AppendAllText("scripts\\DiagComputadora.txt", DateTime.Now.ToString("HH:mm:ss") + " >>> " + l + Environment.NewLine); } catch { } }
+
+        void TickComputadora()
+        {
+            int now = Game.GameTime;
+            Ped me = null;
+            try { me = Game.LocalPlayer.Character; } catch { }
+            if (me == null || !Game.Exists(me)) return;
+            if (pcEstado == 0)
+            {
+                if (now >= pcBusca)
+                {
+                    pcBusca = now + 300;
+                    pcObj = null;
+                    if (!me.isInVehicle() && me.isAliveAndWell && B("IS_INTERIOR_SCENE"))
+                    {
+                        float mejor = 1.7f;
+                        foreach (string m in ModelosPc)
+                        {
+                            GTA.Object[] os = null;
+                            try { os = World.GetAllObjects(new Model(m)); } catch { }
+                            if (os == null) continue;
+                            foreach (GTA.Object o in os)
+                            {
+                                try
+                                {
+                                    if (o == null || !Game.Exists(o)) continue;
+                                    float d = o.Position.DistanceTo(me.Position);
+                                    if (d < mejor) { mejor = d; pcObj = o; }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                if (pcObj == null) return;
+                if (tienda || rueda || regMenu || guantera || accion != 0 || sentado != 0 || saludoFase != 0) return;
+                if (Inst("computerStreamed") > 0 || Inst("computerMain") > 0) return;   // el juego ya la maneja
+                Ayuda("E: usar la computadora");
+                if (eTick) EmpezarComputadora(me, now);
+                return;
+            }
+            if (pcEstado == 1)
+            {
+                if (B("HAS_SCRIPT_LOADED", "computerMain") && !B("IS_SCREEN_FADING"))
+                {
+                    int h = 0;
+                    try { if (pcObj != null && Game.Exists(pcObj)) h = HandleDe(pcObj); } catch { }
+                    if (h == 0) { TerminarComputadora("el monitor desaparecio"); return; }
+                    pcMem = Marshal.AllocHGlobal(16);
+                    Marshal.WriteInt32(pcMem, h);
+                    try { Function.Call("CLEAR_HELP"); } catch { }
+                    try { pcTid = Function.Call<int>("START_NEW_SCRIPT_WITH_ARGS", "computerMain", pcMem.ToInt32(), 1, 1024); } catch { pcTid = 0; }
+                    try { Function.Call("MARK_SCRIPT_AS_NO_LONGER_NEEDED", "computerMain"); } catch { }
+                    LogPc("computerMain arrancado: monitor " + h + " hilo " + pcTid);
+                    pcEstado = 2; pcDesde = now;
+                }
+                else if (now - pcDesde > 8000) TerminarComputadora("computerMain no cargo");
+                return;
+            }
+            if (pcEstado == 2)
+            {
+                bool activo = pcTid != 0 && B("IS_THREAD_ACTIVE", pcTid);
+                if (!activo && now - pcDesde > 1500) TerminarComputadora(pcTid == 0 ? "no se pudo arrancar" : "cerrada");
+            }
+        }
+
+        void EmpezarComputadora(Ped me, int now)
+        {
+            if (pcObj == null || !Game.Exists(pcObj)) return;
+            try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), false); } catch { }
+            try { Function.Call("SET_MINIGAME_IN_PROGRESS", true); } catch { }
+            try { Function.Call("DISPLAY_NON_MINIGAME_HELP_MESSAGES", true); } catch { }
+            try { Function.Call("DO_SCREEN_FADE_OUT", 500); } catch { }
+            try { Function.Call("REQUEST_SCRIPT", "computerMain"); } catch { }
+            pcEstado = 1; pcDesde = now;
+            LogPc("usar computadora: " + pcObj.Model.ToString());
+        }
+
+        void TerminarComputadora(string motivo)
+        {
+            try { Function.Call("DISPLAY_NON_MINIGAME_HELP_MESSAGES", false); } catch { }
+            try { Function.Call("SET_MINIGAME_IN_PROGRESS", false); } catch { }
+            try { Function.Call("SET_PLAYER_CONTROL", PlayerId(), true); } catch { }
+            try { if (B("IS_SCREEN_FADED_OUT") || B("IS_SCREEN_FADING_OUT")) Function.Call("DO_SCREEN_FADE_IN", 500); } catch { }
+            try { Function.Call("DISABLE_PAUSE_MENU", false); } catch { }
+            if (pcMem != IntPtr.Zero) { try { Marshal.FreeHGlobal(pcMem); } catch { } pcMem = IntPtr.Zero; }
+            LogPc("computadora terminada: " + motivo);
+            if (motivo != "cerrada") Aviso("No se pudo abrir la computadora (" + motivo + ")");
+            pcEstado = 0; pcTid = 0; pcBusca = Game.GameTime + 2000;
+        }
+
         void ArreglosInicio()
         {
             int now = Game.GameTime;
@@ -1208,6 +1321,8 @@ namespace VidaNikoMod
             bool shift = Down(VK_SHIFT), ctrl = Down(VK_CTRL), mision = EnMision();
             bool aPie = !me.isInVehicle() && me.isAliveAndWell;
             bool e = Pressed(VK_E) && !shift, z = Pressed(VK_Z) && !shift;
+            eTick = e;
+            if (pcEstado != 0) return;   // en la computadora no se hace nada mas
             bool nDown = Down(VK_N) && !shift, nRel = !nDown && prev[VK_N];
             if (nDown && !prev[VK_N]) nDesde = now;
             prev[VK_N] = nDown;
@@ -1426,6 +1541,8 @@ namespace VidaNikoMod
             DibujarDiag();
             ArreglosInicio();
             RegistrarComputadora();
+            TickComputadora();
+            if (pcEstado != 0) return;   // usando la computadora: nada nuestro en pantalla
             bool cine = EnCinematica();
             if (rueda && !cine)
             {
