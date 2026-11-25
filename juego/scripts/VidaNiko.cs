@@ -46,7 +46,7 @@ namespace VidaNikoMod
         static extern short GetAsyncKeyState(int vKey);
 
         const int VK_E = 0x45, VK_U = 0x55, VK_N = 0x4E, VK_Z = 0x5A, VK_W = 0x57, VK_SHIFT = 0x10, VK_CTRL = 0x11;
-        const int VK_F9 = 0x78, VK_F8 = 0x77, VK_F7 = 0x76;
+        const int VK_F9 = 0x78, VK_F8 = 0x77, VK_F6 = 0x75;
         const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_ENTER = 0x0D, VK_BACK = 0x08;
         const string ArchivoIni = "scripts\\VidaNiko.ini";
         const string ArchivoEstado = "scripts\\VidaNikoEstado.txt";
@@ -412,65 +412,66 @@ namespace VidaNikoMod
         void Aviso(string s) { aviso = s; avisoHasta = Game.GameTime + 4500; }
         int PlayerId() { try { return Function.Call<int>("GET_PLAYER_ID"); } catch { return 0; } }
         bool EnMision() { try { return Function.Call<bool>("GET_MISSION_FLAG"); } catch { return false; } }
-        // ---- computadora del cibercafe (Ctrl+F7) ----
-        // Las computadoras del juego son objetos (BM_monitor4, BM_monitor6, BM_laptop) que arrancan el script
-        // computerStreamed al acercarte. Con muchos autos agregados a veces no aparecen: aca se pone una.
+        // ---- diagnostico de la computadora del cibercafe (Ctrl+F6) ----
+        // El script del juego (computerStreamed) solo muestra "usar computadora" si TODO esto da bien:
+        // jugador jugando, pantalla sin fundido, control activo, libre para tareas ambientales, sin objeto en la mano,
+        // y sin otro mensaje de ayuda en pantalla. Esto muestra cada condicion para ver cual falla.
         static readonly string[] ModelosPc = { "BM_monitor4", "BM_monitor6", "BM_laptop" };
-        GTA.Object pcPuesta;
+        int diagHasta;
+        string[] diag;
 
-        int Instancias(string script)
-        {
-            try { return Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", script); } catch { return -1; }
-        }
+        bool B(string native, params Parameter[] a) { try { return Function.Call<bool>(native, a); } catch { return false; } }
 
-        void Computadora(Ped me, bool forzar)
+        void Diagnostico(Ped me, bool arreglar)
         {
+            Player pl = Game.LocalPlayer;
+            if (arreglar)
+            {
+                try { Function.Call("SET_MINIGAME_IN_PROGRESS", false); } catch { }
+                try { Function.Call("DISPLAY_NON_MINIGAME_HELP_MESSAGES", true); } catch { }
+                try { Function.Call("CLEAR_HELP"); } catch { }
+                try { Function.Call("SET_PLAYER_CONTROL", pl, true); } catch { }
+                try { me.Task.ClearAll(); } catch { }
+                QuitarProp();
+                Aviso("Destrabado: minijuego apagado, ayuda limpia, control activo. Proba la computadora y el ESC");
+            }
             Vector3 p = me.Position;
-            string hay = "";
+            string pc = "ninguna a 15 m";
             foreach (string m in ModelosPc)
             {
-                try { if (Function.Call<bool>("DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS", p.X, p.Y, p.Z, 3.0f, new Model(m).Hash)) hay = m; } catch { }
+                if (B("DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS", p.X, p.Y, p.Z, 2.5f, new Model(m).Hash)) { pc = m + " a menos de 2,5 m"; break; }
+                if (B("DOES_OBJECT_OF_TYPE_EXIST_AT_COORDS", p.X, p.Y, p.Z, 15f, new Model(m).Hash)) pc = m + " a menos de 15 m";
             }
-            int cs = Instancias("computerStreamed"), cm = Instancias("computerMain");
-            if (forzar)
-            {
-                // abrir el escritorio directo (como lo hace el juego: 1 argumento, pila 1024)
-                try
-                {
-                    Function.Call("REQUEST_SCRIPT", "computerMain");
-                    int limite = Game.GameTime + 3000;
-                    while (!Function.Call<bool>("HAS_SCRIPT_LOADED", "computerMain") && Game.GameTime < limite) Wait(0);
-                    if (!Function.Call<bool>("HAS_SCRIPT_LOADED", "computerMain")) { Aviso("No se pudo cargar la computadora"); return; }
-                    Pointer arg = new Pointer(typeof(int));
-                    arg.Value = 0;
-                    Function.Call<int>("START_NEW_SCRIPT_WITH_ARGS", "computerMain", arg, 1, 1024);
-                    Function.Call("MARK_SCRIPT_AS_NO_LONGER_NEEDED", "computerMain");
-                    Aviso("Abriendo la computadora...");
-                }
-                catch { Aviso("No se pudo abrir la computadora"); }
-                return;
-            }
-            if (hay.Length == 0)
-            {
-                try
-                {
-                    Model m = new Model("BM_monitor4");
-                    Function.Call("REQUEST_MODEL", m.Hash);
-                    int limite = Game.GameTime + 3000;
-                    while (!Function.Call<bool>("HAS_MODEL_LOADED", m.Hash) && Game.GameTime < limite) Wait(0);
-                    if (pcPuesta != null && Game.Exists(pcPuesta)) pcPuesta.Delete();
-                    pcPuesta = World.CreateObject(m, me.GetOffsetPosition(new Vector3(0f, 0.8f, 0.1f)));
-                    if (pcPuesta != null && Game.Exists(pcPuesta))
-                    {
-                        pcPuesta.Heading = me.Heading + 180f;
-                        pcPuesta.FreezePosition = true;
-                        Aviso("No habia computadora: puse una adelante tuyo. Apreta E (la del juego). Si no aparece: Ctrl+Shift+F7");
-                    }
-                    else Aviso("No se pudo poner la computadora. Proba Ctrl+Shift+F7");
-                }
-                catch { Aviso("No se pudo poner la computadora. Proba Ctrl+Shift+F7"); }
-            }
-            else Aviso("Computadora " + hay + " cerca. Script del juego: " + (cs > 0 ? "activo" : "apagado") + (cm > 0 ? " (abierta)" : "") + ". Si no te deja usarla: Ctrl+Shift+F7");
+            int cs = -1;
+            try { cs = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerStreamed"); } catch { }
+            bool mano = false;
+            try { GTA.Object o = Function.Call<GTA.Object>("GET_OBJECT_PED_IS_HOLDING", me); mano = o != null && Game.Exists(o); } catch { }
+            diag = new string[] {
+                "Computadora cerca: " + pc,
+                "Script de la computadora: " + (cs > 0 ? "ACTIVO" : cs == 0 ? "no arranco" : "?"),
+                "Interior: " + Si(B("IS_INTERIOR_SCENE")),
+                "Jugando: " + Si(B("IS_PLAYER_PLAYING", pl)),
+                "Pantalla sin fundido: " + Si(B("IS_SCREEN_FADED_IN")),
+                "Control del jugador: " + Si(B("IS_PLAYER_CONTROL_ON", pl)),
+                "Libre para tareas (clave): " + Si(B("IS_PLAYER_FREE_FOR_AMBIENT_TASK", pl)),
+                "Objeto en la mano: " + (mano ? "SI (bloquea)" : "no"),
+                "Otro mensaje de ayuda: " + (B("IS_HELP_MESSAGE_BEING_DISPLAYED") ? "SI (bloquea)" : "no"),
+                "Minijuego en curso: " + (B("IS_MINIGAME_IN_PROGRESS") ? "SI (bloquea ESC)" : "no"),
+                "Controles estandar: " + Si(B("USING_STANDARD_CONTROLS")),
+                "Ctrl+Shift+F6: destrabar"
+            };
+            diagHasta = Game.GameTime + 20000;
+        }
+
+        static string Si(bool b) { return b ? "si" : "NO"; }
+
+        void DibujarDiag()
+        {
+            if (diag == null || Game.GameTime > diagHasta) return;
+            float x = 0.62f, y = 0.16f, w = 0.35f;
+            IV.Titulo("Diagnostico computadora", x, y, w);
+            y += 0.045f;
+            foreach (string l in diag) { IV.Item(l, null, x, y, w, false, false, 0f); y += IV.Fila; }
         }
 
         bool EnCinematica()
@@ -1096,7 +1097,7 @@ namespace VidaNikoMod
             int nTipo = 0;                                     // 1 tocar, 2 mantener
             if (nDown && nDesde > 0 && now - nDesde > 450) { nTipo = 2; nDesde = 0; }
             else if (nRel && nDesde > 0) { nTipo = 1; nDesde = 0; }
-            bool f9 = Pressed(VK_F9), f8 = Pressed(VK_F8), f7 = Pressed(VK_F7);
+            bool f9 = Pressed(VK_F9), f8 = Pressed(VK_F8), f6 = Pressed(VK_F6);
             bool uDown = Down(VK_U);
             bool uPress = uDown && !prev[VK_U], uRelease = !uDown && prev[VK_U];
             prev[VK_U] = uDown;
@@ -1135,7 +1136,7 @@ namespace VidaNikoMod
             }
 
             if (ctrl && f9 && aPie) { Registrar(me, "FARMACIA"); return; }
-            if (ctrl && f7 && aPie) { Computadora(me, shift); return; }
+            if (ctrl && f6) { Diagnostico(me, shift); return; }
             if (ctrl && f8 && aPie && !regMenu) { regMenu = true; regSel = 0; Control(false); return; }
             if (regMenu)
             {
@@ -1305,6 +1306,7 @@ namespace VidaNikoMod
         {
             int now = Game.GameTime;
             // el estado de Niko solo se ve con la rueda (mantener U); nada en cinematicas
+            DibujarDiag();
             bool cine = EnCinematica();
             if (rueda && !cine)
             {
