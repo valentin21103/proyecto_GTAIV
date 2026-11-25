@@ -27,6 +27,9 @@
 | `Shift+B` / `Shift+N` / `Shift+M` | Arma siguiente / anterior / agarrar | ArmasRapidas |
 | `F1` | Una pistola / dos pistolas | Double Homicide |
 | `F11` | Aspecto de Niko | NikoLook |
+| `G` | Tirar el arma (rueda de armas, antes E) | IV_Weapon_Wheel |
+| `H` | Cambiar de hombro al apuntar (antes E) | ProperCoverandDrive-By |
+| `Ctrl+F5` | Menú de primera persona (antes Ctrl+F8) | FirstPersonCutscene |
 | `Tab` | Rueda de armas | IV Weapon Wheel |
 | `Q` (en auto) | Rueda de radio | IV Weapon Wheel |
 | `F6` | Flechas de pandillas | ActivitiesPlus |
