@@ -326,7 +326,7 @@ namespace MisAutosMod
             catch { }
             for (int i = 1; i <= 9; i++)
             {
-                try { if (Function.Call<bool>("DOES_EXTRA_EXIST", v, i) && Function.Call<bool>("IS_VEHICLE_EXTRA_TURNED_ON", v, i)) a.Extras |= 1 << i; }
+                try { if (Function.Call<bool>("IS_VEHICLE_EXTRA_TURNED_ON", v, i)) a.Extras |= 1 << i; }   // DOES_EXTRA_EXIST no existe en 1.2.0.59
                 catch { }
             }
             a.Nombre = NombreDe(a.Modelo);
@@ -339,7 +339,13 @@ namespace MisAutosMod
             try { Function.Call("SET_EXTRA_CAR_COLOURS", v, a.C3, a.C4); } catch { }
             for (int i = 1; i <= 9; i++)
             {
-                try { if (Function.Call<bool>("DOES_EXTRA_EXIST", v, i)) Function.Call("TURN_OFF_VEHICLE_EXTRA", v, i, (a.Extras & (1 << i)) == 0); }
+                try
+                {
+                    // solo se tocan los accesorios guardados o los que estan puestos (asi no se tocan extras que el auto no tiene)
+                    bool quiero = (a.Extras & (1 << i)) != 0;
+                    bool puesto = Function.Call<bool>("IS_VEHICLE_EXTRA_TURNED_ON", v, i);
+                    if (quiero != puesto) Function.Call("TURN_OFF_VEHICLE_EXTRA", v, i, !quiero);
+                }
                 catch { }
             }
         }

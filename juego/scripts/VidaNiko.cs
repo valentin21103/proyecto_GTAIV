@@ -1465,17 +1465,17 @@ namespace VidaNikoMod
             if (z) { Sentarse(me, now); return; }
 
             // ---- tienda cercana ----
-            // estaciones: autoservicio. Farmacias, restaurantes y almacenes: hay que hablar con el empleado (E)
+            // en todos los lugares (tambien estaciones) se compra hablando con el empleado (E).
+            // En las estaciones, si no hay empleado, la E queda para el menu de nafta de MisAutos.
             Lugar t = TiendaCerca(me.Position);
             Ped emp = null;
-            if (t != null && t.Tipo != "ESTACION") emp = BuscarEmpleado(me);
+            if (t != null) emp = BuscarEmpleado(me);
             if (t != null && e)
             {
                 tiendaObjs = ObjsDeTienda(t);
                 if (tiendaObjs.Count > 0)
                 {
-                    if (t.Tipo == "ESTACION") { tienda = true; tiendaSel = 0; tiendaLugar = t; Control(false); return; }
-                    if (emp == null) { Aviso("No hay nadie atendiendo"); return; }
+                    if (emp == null) { if (t.Tipo != "ESTACION") Aviso("No hay nadie atendiendo"); return; }
                     empleado = emp; tiendaLugar = t; saludoFase = 1; saludoHasta = now + 1300;
                     Control(false);
                     try { Function.Call("TASK_TURN_CHAR_TO_FACE_CHAR", me, emp); } catch { }
@@ -1514,7 +1514,7 @@ namespace VidaNikoMod
                 bool grave = hambre < 10f || sed < 10f;
                 proximoGesto = now + (grave ? 25000 : 50000);
                 float vel = 0f;
-                try { vel = Function.Call<float>("GET_CHAR_SPEED", me); } catch { }
+                try { Pointer pv = new Pointer(typeof(float)); Function.Call("GET_CHAR_SPEED", me, pv); vel = (float)pv.Value; } catch { }   // escribe en un puntero (2 datos), como lo usa Rockstar
                 if (vel < 0.5f && !mision && Player.WantedLevel == 0 && !Down(0x02))
                 {
                     // gesto de la cintura para arriba: no frena a Niko
@@ -1525,8 +1525,7 @@ namespace VidaNikoMod
 
             if (t != null && !sangrando)
             {
-                if (t.Tipo == "ESTACION") Ayuda("Apreta E para comprar en " + t.Nombre + ".");
-                else if (emp != null) Ayuda("Apreta E para hablar con el empleado.");
+                if (emp != null) Ayuda("Apreta E para hablar con el empleado.");
             }
         }
 
