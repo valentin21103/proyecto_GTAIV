@@ -646,8 +646,7 @@ namespace VidaNikoMod
                             float d = o.Position.DistanceTo(p);
                             if (d >= mejor) continue;
                             mejor = d;
-                            pc = m + " " + d.ToString("0.0", CultureInfo.InvariantCulture) + "m rango=" + Si(B("IS_OBJECT_WITHIN_BRAIN_ACTIVATION_RANGE", o))
-                               + " movida=" + Si(B("HAS_OBJECT_BEEN_UPROOTED", o)) + " danada=" + Si(B("HAS_OBJECT_BEEN_DAMAGED", o));
+                            pc = m + " " + d.ToString("0.0", CultureInfo.InvariantCulture) + "m";
                         }
                         catch { }
                     }
@@ -675,9 +674,9 @@ namespace VidaNikoMod
                     + " libre=" + Si(B("IS_PLAYER_FREE_FOR_AMBIENT_TASK", pl)) + " mano=" + Si(mano) + " ayuda=" + Si(B("IS_HELP_MESSAGE_BEING_DISPLAYED"))
                     + " minijuego=" + Si(B("IS_MINIGAME_IN_PROGRESS")) + " estandar=" + Si(B("USING_STANDARD_CONTROLS"))
                     + " teclaE=" + Si((GetAsyncKeyState(0x45) & 0x8000) != 0) + " accion=" + Si(B("IS_CONTROL_PRESSED", 2, 23))
-                    + " armado=" + Si(B("IS_CHAR_ARMED", me, 7)) + " auto=" + Si(me.isInVehicle());
+                    + " auto=" + Si(me.isInVehicle()) + " pcEstado=" + pcEstado;
                 // cada 5 segundos: que scripts del juego estan corriendo (para ver si se lleno el cupo de hilos)
-                if (diagLineas % 5 == 0)
+                if (false)
                 {
                     int total = 0;
                     System.Text.StringBuilder sb = new System.Text.StringBuilder();
