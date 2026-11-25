@@ -465,6 +465,65 @@ namespace VidaNikoMod
 
         static string Si(bool b) { return b ? "si" : "NO"; }
 
+        // Registro automatico (scripts\DiagComputadora.txt) cuando estas en un interior con una computadora cerca
+        // o durante la mision del cibercafe (roman9): cada segundo anota cada condicion que pide el juego.
+        int diagProx, diagLineas;
+        void RegistrarComputadora()
+        {
+            int now = Game.GameTime;
+            if (now < diagProx || diagLineas > 3000) return;
+            diagProx = now + 1000;
+            try
+            {
+                Ped me = Game.LocalPlayer.Character;
+                if (me == null || !Game.Exists(me)) return;
+                int r9 = -1; try { r9 = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "roman9"); } catch { }
+                bool interior = B("IS_INTERIOR_SCENE");
+                if (!interior && r9 <= 0) return;
+                Vector3 p = me.Position;
+                string pc = "-"; float mejor = 99f;
+                foreach (string m in ModelosPc)
+                {
+                    GTA.Object[] os = null;
+                    try { os = World.GetAllObjects(new Model(m)); } catch { }
+                    if (os == null) continue;
+                    foreach (GTA.Object o in os)
+                    {
+                        try
+                        {
+                            if (o == null || !Game.Exists(o)) continue;
+                            float d = o.Position.DistanceTo(p);
+                            if (d >= mejor) continue;
+                            mejor = d;
+                            pc = m + " " + d.ToString("0.0", CultureInfo.InvariantCulture) + "m rango=" + Si(B("IS_OBJECT_WITHIN_BRAIN_ACTIVATION_RANGE", o))
+                               + " movida=" + Si(B("HAS_OBJECT_BEEN_UPROOTED", o)) + " danada=" + Si(B("HAS_OBJECT_BEEN_DAMAGED", o));
+                        }
+                        catch { }
+                    }
+                }
+                if (r9 <= 0 && mejor > 12f) return;
+                int objs = 0; try { objs = World.GetAllObjects().Length; } catch { }
+                Player pl = Game.LocalPlayer;
+                bool mano = false;
+                try { GTA.Object o = Function.Call<GTA.Object>("GET_OBJECT_PED_IS_HOLDING", me); mano = o != null && Game.Exists(o); } catch { }
+                int cs = -1, caf = -1, cm = -1;
+                try { cs = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerStreamed"); } catch { }
+                try { caf = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "ambInternetCafe"); } catch { }
+                try { cm = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerMain"); } catch { }
+                string l = DateTime.Now.ToString("HH:mm:ss") + " pos=" + p.X.ToString("0.0", CultureInfo.InvariantCulture) + "," + p.Y.ToString("0.0", CultureInfo.InvariantCulture) + "," + p.Z.ToString("0.0", CultureInfo.InvariantCulture)
+                    + " interior=" + Si(interior) + " mision=" + r9 + " pc=[" + pc + "] objetos=" + objs
+                    + " scripts(pc=" + cs + " cafe=" + caf + " main=" + cm + ")"
+                    + " jugando=" + Si(B("IS_PLAYER_PLAYING", pl)) + " fundido=" + Si(B("IS_SCREEN_FADED_IN")) + " control=" + Si(B("IS_PLAYER_CONTROL_ON", pl))
+                    + " libre=" + Si(B("IS_PLAYER_FREE_FOR_AMBIENT_TASK", pl)) + " mano=" + Si(mano) + " ayuda=" + Si(B("IS_HELP_MESSAGE_BEING_DISPLAYED"))
+                    + " minijuego=" + Si(B("IS_MINIGAME_IN_PROGRESS")) + " estandar=" + Si(B("USING_STANDARD_CONTROLS"))
+                    + " teclaE=" + Si((GetAsyncKeyState(0x45) & 0x8000) != 0) + " accion=" + Si(B("IS_CONTROL_PRESSED", 2, 23))
+                    + " armado=" + Si(B("IS_CHAR_ARMED", me, 7)) + " auto=" + Si(me.isInVehicle());
+                File.AppendAllText("scripts\\DiagComputadora.txt", l + Environment.NewLine);
+                diagLineas++;
+            }
+            catch { }
+        }
+
         void DibujarDiag()
         {
             if (diag == null || Game.GameTime > diagHasta) return;
@@ -1307,6 +1366,7 @@ namespace VidaNikoMod
             int now = Game.GameTime;
             // el estado de Niko solo se ve con la rueda (mantener U); nada en cinematicas
             DibujarDiag();
+            RegistrarComputadora();
             bool cine = EnCinematica();
             if (rueda && !cine)
             {
