@@ -432,7 +432,9 @@ namespace VidaNikoMod
                 try { Function.Call("CLEAR_HELP"); } catch { }
                 try { Function.Call("SET_PLAYER_CONTROL", pl, true); } catch { }
                 try { me.Task.ClearAll(); } catch { }
+                try { Function.Call("DISABLE_PAUSE_MENU", false); } catch { }
                 QuitarProp();
+                ArreglarComputadoras("Ctrl+Shift+F6");
                 Aviso("Destrabado: minijuego apagado, ayuda limpia, control activo. Proba la computadora y el ESC");
             }
             Vector3 p = me.Position;
@@ -465,9 +467,45 @@ namespace VidaNikoMod
 
         static string Si(bool b) { return b ? "si" : "NO"; }
 
+        // ---- Arreglo de las computadoras ----
+        // La partida guardada trae registrado "este objeto usa este script" por NUMERO de modelo. Cuando los mods
+        // agregan o sacan modelos (armas, peds, autos, props) esos numeros se corren y el monitor queda sin script:
+        // no aparece "usar computadora". Aca se vuelve a registrar con el nombre real del modelo (igual que startup.sco).
+        bool brainsArreglados, pausaArreglada;
+        int inicioSesion, pcCercaDesde;
+
+        void ArreglarComputadoras(string motivo)
+        {
+            if (brainsArreglados) return;
+            brainsArreglados = true;
+            try
+            {
+                Function.Call("ALLOCATE_SCRIPT_TO_OBJECT", "computerStreamed", unchecked((int)0x9AB9F5CC), 100, 3.0f, -1); // BM_monitor4
+                Function.Call("ALLOCATE_SCRIPT_TO_OBJECT", "computerStreamed", unchecked((int)0xB94FB347), 100, 3.0f, -1); // BM_monitor6
+                Function.Call("ALLOCATE_SCRIPT_TO_OBJECT", "computerStreamed", unchecked((int)0xCFFE2EF7), 100, 5.0f, -1); // BM_laptop
+                try { File.AppendAllText("scripts\\DiagComputadora.txt", DateTime.Now.ToString("HH:mm:ss") + " >>> computadoras re-registradas (" + motivo + ")" + Environment.NewLine); } catch { }
+                Aviso("Computadoras arregladas: sali del cibercafe, alejate una cuadra y volve a entrar");
+            }
+            catch { Aviso("No se pudieron registrar las computadoras"); }
+        }
+
+        void ArreglosInicio()
+        {
+            int now = Game.GameTime;
+            if (inicioSesion == 0) { inicioSesion = now; return; }
+            if (!pausaArreglada && now - inicioSesion > 10000)
+            {
+                pausaArreglada = true;
+                // si quedo el menu de pausa bloqueado (lo bloquea la computadora mientras se usa), se libera
+                int cm = 0; try { cm = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerMain"); } catch { }
+                if (cm == 0) { try { Function.Call("DISABLE_PAUSE_MENU", false); } catch { } }
+            }
+        }
+
         // Registro automatico (scripts\DiagComputadora.txt) cuando estas en un interior con una computadora cerca
         // o durante la mision del cibercafe (roman9): cada segundo anota cada condicion que pide el juego.
         int diagProx, diagLineas;
+        const string NombresScripts = "advanced_car_actions,ambairpotarea,ambatmq,ambbar,ambbarrier,ambbeggar,ambblkhawk,ambbouncer,ambbridgepatrol,ambbusker,ambcabaret,ambcargoholddoors,ambchurchdoors,ambclublights,ambcomedyclub,ambcontrolloader,ambcontrolmain,ambdealer,ambdebug,ambfloater,ambgerry3doorlock,ambhelicopter,ambhomelandcordon,ambhomelandfed,ambhomelandsirens,ambhotel,ambinternetcafe,ambjerseydocksgates,ambjimslocks,ambliftdoors,ambnightclubext,ambpimpnpros,ambpoledancer,ambpolrdblk,ambpreacher,ambsavebed,ambshowroom,ambstripclub,ambtaxdpt,ambtaxihail,ambtoiletdoors,ambtunnelcops,ambtv,ambunarea,ambwardrobe,ambwindowlift,arrestescapehelp,atmobj,badman_1,bell2,bell3m,bell3p,bell5,bell6,bell7,bernie1,bernie2,bernie3,berniecar,binco_brook_s,boating,bowl_trigger,bowling_lane,brian_1,brian_2,brian_3,brucie1,brucie2,brucie3_meetguy,brucie3a,brucie3b,brucie4,brucie5m,brucie5p,brucie_heli,brucieboat,bruciecopter,bruciedrink,brucieeat,brucielift,brucieshow,bruciestrip,brucietenpin,burgervendor,cablecars,car_theft_texts,cardivehelp,carfoodrunjack,carwash,cherise,cia1,cia2,cia3,cia4,ciawanted,clarence,cleanupray5trains,computermain,computernews,computerstreamed,copbootsearch,darts,darts_launcher,darts_trigger,date_activity,date_food,dating_alex,dating_carmen,dating_kate,dating_kiki,dating_michelle,deatharresthelp,derrick1,derrick2,derrick3,dwayne1,dwayne3,dwayne_backup,dwaynecherise,dwaynedrink,dwayneeat,dwayneemail,dwayneshow,dwaynestrip,dwaynetenpin,eddie1,eddie2,elizabeta1,elizabeta2,elizabeta3,elizabeta4,emergencycall,empiredown,empiretelescope,endcreditroll,endgamenews,faustin1,faustin2,faustin3,faustin4,faustin5,faustin5_fire,faustin6,faustin7,finale1a,finale1b,finale1c,finale1d,finale2,finaleaorb,finaleintrocut,finalewedtxts,foodserver,francis1,francis2_appointment,francis2a,francis2b,francis3,francis4,francis5,francis6,gambetti1,gambetti2,gambetti3,garbage_trucks,gerry1,gerry1_base,gerry2,gerry3_phonegirl,gerry3a,gerry3b,gerry3c,gerry4,gerry5,go_on_date,gracie,gunlockup,gunlockupct,handbrakehelp,happytshirt,helicopter,hospitalpickup,hossan_1,hotwirehelp,ilyena,ilyena_calls,independencefm,initial,internet_dating,ivan_1,jacob1,jacob2,jacob3m,jacob3p,jacob_gun_car,jacobdarts,jacobdrink,jacobeat,jacoblift,jacobpool,jacobshow,jacobstrip,jeff_1,jeff_1_mission,jeff_2,jeff_3,jimmy1,jimmy2,jimmy3,jimmy4,jimmy4a,jimmysuit,laterweapons,magvendor,main,manhat_heli_tours,manny1,manny2,manny3,marnie1,marnie2,mel,michelle1,michelle1_queue,michelle_introcalls,modo_manhat_5,mostwanted,mptutoriallauncher,multiplayertutorial,multitutorial,network_session,nutvendor,organiserhelp,packie1,packie2,packie3,packie_bomb,packiedarts,packiedrink,packiepool,packieshow,packiestrip,packiesuit,packietenpin,pathos1,pathos2,pdbhangoutmgr,pdbhomemgr,pdbmostwanted,perseus_manhat_8,phonepadhelp,phoneprofilehelp,physicstestbed,placeholder,playboy2,playboy3,playboy4,policebackup,policetest,pool_game,pool_table,puzzle,puzzle_launcher,pxdfcut,ray1,ray2,ray3,ray4,ray5,ray6,replayhelp,replaytutorial,roman1,roman10m,roman10p,roman11,roman12,roman13,roman14,roman2,roman3,roman3txtmsgrepeat,roman4,roman5,roman6,roman7,roman8m,roman8p,roman9,roman_bleedoutintro,roman_fakeblip,roman_taxi,romanblips,romandarts,romandrink,romaneat,romanmarker,romanpool,romanshow,romanstrip,romantenpin,sara2,sara_1,sixaxistutlauncher,sixaxistutorial,spcellphone,spcellphonecalling,spcellphonedebug,spcellphoneendcall,spcellphonemain,spcellphonenetwork,spcellphonetutorial,speechcontrol,sprunk,startup,stat_bridge,stattracker,storytimer,stunt,taxi,taxi_trigger,telescope,tenpinbowl,text_link_mission,till,tollbooth,trainhelper,txtmsghelp,vendor,vigilante,vlad1,vlad2,vlad3,vlad4,wantedhelp,waypointhelp,webalexblog,webautoeroticar,webcraplist,webdating,webdatingboys,webdatingfullprofile,webdatinggirls,webeddieblog,webemail,weberror,webeyefind,webeyefindsearch,weblawyerscareer,weblawyerscv,weblcpd,weblcpdprofile,weblibertytree,weblibertytreenews,webourownreality,webpublicliberty,webrealestate,webringtones,webringtonesmono,webringtonespoly,webringtonespurchase,webringtonestheme,webweazel,webweazelnews,webwhatthey,window_lift_launcher";
         void RegistrarComputadora()
         {
             int now = Game.GameTime;
@@ -501,6 +539,13 @@ namespace VidaNikoMod
                         catch { }
                     }
                 }
+                int csAhora = -1; try { csAhora = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", "computerStreamed"); } catch { }
+                if (!brainsArreglados && mejor <= 2.0f && csAhora == 0 && !me.isInVehicle())
+                {
+                    if (pcCercaDesde == 0) pcCercaDesde = now;
+                    else if (now - pcCercaDesde > 4000) ArreglarComputadoras("auto: monitor a " + mejor.ToString("0.0", CultureInfo.InvariantCulture) + " m sin script");
+                }
+                else if (mejor > 2.5f) pcCercaDesde = 0;
                 if (r9 <= 0 && mejor > 12f) return;
                 int objs = 0; try { objs = World.GetAllObjects().Length; } catch { }
                 Player pl = Game.LocalPlayer;
@@ -518,6 +563,19 @@ namespace VidaNikoMod
                     + " minijuego=" + Si(B("IS_MINIGAME_IN_PROGRESS")) + " estandar=" + Si(B("USING_STANDARD_CONTROLS"))
                     + " teclaE=" + Si((GetAsyncKeyState(0x45) & 0x8000) != 0) + " accion=" + Si(B("IS_CONTROL_PRESSED", 2, 23))
                     + " armado=" + Si(B("IS_CHAR_ARMED", me, 7)) + " auto=" + Si(me.isInVehicle());
+                // cada 5 segundos: que scripts del juego estan corriendo (para ver si se lleno el cupo de hilos)
+                if (diagLineas % 5 == 0)
+                {
+                    int total = 0;
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    foreach (string sn in NombresScripts.Split(','))
+                    {
+                        int k = 0;
+                        try { k = Function.Call<int>("GET_NUMBER_OF_INSTANCES_OF_STREAMED_SCRIPT", sn); } catch { }
+                        if (k > 0) { total += k; sb.Append(sn); if (k > 1) sb.Append("x" + k); sb.Append(' '); }
+                    }
+                    l += Environment.NewLine + "   SCRIPTS CORRIENDO (" + total + "): " + sb.ToString();
+                }
                 File.AppendAllText("scripts\\DiagComputadora.txt", l + Environment.NewLine);
                 diagLineas++;
             }
@@ -1366,6 +1424,7 @@ namespace VidaNikoMod
             int now = Game.GameTime;
             // el estado de Niko solo se ve con la rueda (mantener U); nada en cinematicas
             DibujarDiag();
+            ArreglosInicio();
             RegistrarComputadora();
             bool cine = EnCinematica();
             if (rueda && !cine)
