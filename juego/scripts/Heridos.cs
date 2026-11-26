@@ -24,7 +24,7 @@ namespace HeridosMod
         bool activado = true;
         int impactosMedio = 3;           // impactos que lo dejan herido medio (se va rengueando)
         int impactosGrave = 5;           // impactos que lo dejan grave (en el piso)
-        int vidaMedio = 40;              // % de vida o menos: herido medio
+        int vidaMedio = 30;              // % de vida o menos: herido medio
         int vidaGrave = 20;              // % de vida o menos: grave
         int segundosHastaMorir = 120;    // grave: segundos hasta desangrarse (0 = no muere solo)
         int chanceRendirse = 35;         // % de los graves que se rinden en vez de quedarse tirados
