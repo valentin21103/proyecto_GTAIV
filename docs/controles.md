@@ -15,6 +15,7 @@
 | `U` (en tu auto, parado) | Guantera: hasta 3 bebidas; Enter tomar / guardar, Retroceso sacar | VidaNiko + MisAutos |
 | `U` (fumando) | Apagar el cigarrillo: a pie lo pisa, en el auto lo tira por la ventana (se puede caminar y manejar fumando) | VidaNiko |
 | `E` (en un patrullero parado) | Computadora de la policia, tambien en los patrulleros que agrega el mod de autos | VidaNiko |
+| `J` (con arma de fuego, alguien pegado adelante) | Culatazo: le saca vida y lo tira un momento | Culatazo |
 | `E` (mirando al empleado) | Hablar con el empleado y comprar: farmacia = curaciones + agua; restaurante = comida y bebida; almacén = bebidas, snacks y cigarrillos | VidaNiko |
 | `E` (estación de servicio) | Tienda de autoservicio: de todo | VidaNiko |
 | `Ctrl+F8` | Menú para registrar el lugar actual como farmacia, restaurante, almacén o baño (tu casa) (`scripts/Lugares.ini`) | VidaNiko |

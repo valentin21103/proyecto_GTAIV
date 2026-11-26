@@ -1406,7 +1406,9 @@ namespace VidaNikoMod
             QuitarChorro();
             QuitarProp();
             CortarArriba(me);
-            if (cuerpoEntero) { try { me.Task.ClearAll(); } catch { } }
+            // orinar (2) y cagar (3) usan animaciones en bucle de cuerpo entero: ClearAll las deja congeladas,
+            // hay que cortarlas de golpe (igual que el bidon)
+            if (cuerpoEntero || accion == 2 || accion == 3) { try { me.Task.ClearAllImmediately(); } catch { } }
             accion = 0;
         }
 
