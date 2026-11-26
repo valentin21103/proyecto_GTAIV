@@ -95,6 +95,12 @@ namespace HeridosMod
             try { me = Player.Character; } catch { return; }
             if (!Game.Exists(me)) return;
 
+            // En las misiones no se toca a nadie: los scripts de mision cambian la vida de sus personajes
+            // (eso parecia un tiro y los tiraba al piso cada 5 s, y a los 45 s los mataba).
+            bool mision = false;
+            try { mision = Function.Call<bool>("GET_MISSION_FLAG"); } catch { }
+            if (mision) { if (estados.Count > 0) Soltar(); return; }
+
             Ped[] peds;
             try { peds = World.GetPeds(me.Position, radio); } catch { return; }
 
@@ -151,6 +157,17 @@ namespace HeridosMod
                     catch { return true; }
                 });
             }
+        }
+
+        // deja de tirar al piso a los que estaban caidos y les devuelve sus reacciones normales
+        void Soltar()
+        {
+            foreach (Estado e in estados)
+            {
+                if (!e.Caido) continue;
+                try { if (Game.Exists(e.Ped)) Function.Call("SET_BLOCKING_OF_NON_TEMPORARY_EVENTS", e.Ped, 0); } catch { }
+            }
+            estados.Clear();
         }
 
         bool EsDeMiGrupo(Ped p)
