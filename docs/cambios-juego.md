@@ -18,6 +18,7 @@ Estado al 25/11/2026.
 | `plugins/GTAIV.EFLC.FusionFix.cfg` | rendimiento: ShadowFilter 2->1, ExtraNightShadows 1->0, DepthOfField 2->1, DisplayFpsCounter 0->1 | activo, copia en `.bak_20261125` |
 | `plugins/DLSS-IV.cfg` | `quality` 1 -> 0 (DLAA: 1080p reales en vez de 720p escalado; el limite es el procesador) | activo, copia en `.bak_20261125` |
 | `plugins/DLSS-IV.cfg` | `cpu_place` 0 -> 1 (cada hilo pesado en su propio nucleo; Ryzen 3600 con dos grupos de nucleos). Si traba, volver a 0 | en prueba, copia en `.bak_cpuplace` |
+| `update/common/data/popcycle.dat` (Fidelity Popcycle de Chunk) | columna #Peds x0,75 (promedio 34,6 -> 25,9 como el original; maximo 99 -> 74). Autos sin tocar | activo, copia en `popcycle.dat.bak_20261126` |
 
 ## Partida guardada y objetos interactivos
 La partida guarda "este modelo usa este script" por numero de modelo. Al agregar/sacar modelos con mods

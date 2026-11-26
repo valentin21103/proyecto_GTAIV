@@ -28,7 +28,7 @@ namespace HeridosMod
         int vidaGrave = 20;              // % de vida o menos: grave
         int segundosHastaMorir = 120;    // grave: segundos hasta desangrarse (0 = no muere solo)
         int chanceRendirse = 35;         // % de los graves que se rinden en vez de quedarse tirados
-        float radio = 70f;
+        float radio = 50f;               // metros alrededor de Niko
 
         const int LEVE = 0, MEDIO = 1, GRAVE = 2;
         const int G_TIRADO = 0, G_SUPLICA = 1, G_MANOS = 2;
@@ -50,7 +50,7 @@ namespace HeridosMod
 
         public Heridos()
         {
-            this.Interval = 100;
+            this.Interval = 200;   // 5 veces por segundo alcanza para notar un tiro
             iniPath = "scripts\\Heridos.ini";
             CargarIni();
             this.Tick += new EventHandler(OnTick);
@@ -200,7 +200,9 @@ namespace HeridosMod
 
                     int dano = e.VidaAnterior - vida;
                     e.VidaAnterior = vida;
-                    if (dano >= 8) e.Impactos++;   // golpes chicos (pinas, caidas) no cuentan
+                    // golpes chicos (pinas, caidas) no cuentan; si entraron varios tiros entre dos revisiones
+                    // (rafaga, escopeta) se cuentan por el dano total
+                    if (dano >= 8) e.Impactos += Math.Max(1, dano / 30);
 
                     if (dano > 0 && !p.isInVehicle())
                     {
